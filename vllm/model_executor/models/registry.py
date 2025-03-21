@@ -313,6 +313,7 @@ def _try_load_model_cls(
     from vllm.platforms import current_platform
     current_platform.verify_model_arch(model_arch)
     try:
+        # todo 加载
         return model.load_model_cls()
     except Exception:
         logger.exception("Error in loading model architecture '%s'",
@@ -445,6 +446,7 @@ class _ModelRegistry:
         architectures = self._normalize_archs(architectures)
 
         for arch in architectures:
+            # todo 加载模型
             model_cls = self._try_load_model_cls(arch)
             if model_cls is not None:
                 return (model_cls, arch)

@@ -42,6 +42,9 @@ class Worker(LocalOrDistributedWorkerBase):
     maintaining the KV cache and executing the model on the GPU. In case of
     distributed inference, each worker is assigned a partition of the model.
     """
+    # todo 模型分区！！！！！！
+    # todo 每个worker理解成一块gpu，将使用的模型load到各块卡上。Worker中的CacheEngine负责实际管理KV Cache；
+    #  Worker中的model负责加载模型、执行推理，PagedAttention相关的实现和调用就在model下。
 
     def __init__(
         self,
@@ -90,6 +93,7 @@ class Worker(LocalOrDistributedWorkerBase):
 
         # Uninitialized cache engine. Will be initialized by
         # initialize_cache.
+        # todo CacheEngine负责实际管理KV Cache
         self.cache_engine: List[CacheEngine]
         # Initialize gpu_cache as pooling models don't initialize kv_caches
         self.gpu_cache: Optional[List[List[torch.Tensor]]] = None
@@ -168,7 +172,7 @@ class Worker(LocalOrDistributedWorkerBase):
                                             self.local_rank)
         # Set random seed.
         set_random_seed(self.model_config.seed)
-
+    # todo 加载模型！！！！！！
     def load_model(self):
         if self.vllm_config.model_config.enable_sleep_mode:
             allocator = CuMemAllocator.get_instance()

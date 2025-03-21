@@ -14,6 +14,8 @@ logger = init_logger(__name__)
 
 
 class CacheEngine:
+    # todo CacheEngine负责实际管理KV Cache
+    # todo 在推理或训练过程中，Key 和 Value 通常会被缓存起来，以避免重复计算，从而提高效率。这种缓存被称为 KV Cache。
     """Manages the KV cache.
 
     This class is responsible for initializing and managing the GPU and CPU KV
@@ -74,6 +76,7 @@ class CacheEngine:
         kv_cache_shape = self.attn_backend.get_kv_cache_shape(
             num_blocks, self.block_size, self.num_kv_heads, self.head_size)
         pin_memory = is_pin_memory_available() if device == "cpu" else False
+        # todo 用tensor做的缓存！！！！！！
         kv_cache: List[torch.Tensor] = []
 
         for _ in range(self.num_attention_layers):

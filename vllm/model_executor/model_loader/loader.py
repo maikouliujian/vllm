@@ -113,6 +113,7 @@ def _initialize_model(
 ) -> nn.Module:
     """Initialize a model with the given configurations."""
     model_config = vllm_config.model_config
+    # todo 获取模型
     model_class, _ = get_model_architecture(model_config)
 
     if vllm_config.quant_config is not None:
@@ -1460,7 +1461,7 @@ class RunaiModelStreamerLoader(BaseModelLoader):
             _process_weights_after_loading(model, model_config, target_device)
         return model.eval()
 
-
+# todo 不同的类加载器
 def get_model_loader(load_config: LoadConfig) -> BaseModelLoader:
     """Get a model loader based on the load format."""
     if isinstance(load_config.load_format, type):

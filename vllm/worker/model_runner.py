@@ -1105,7 +1105,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         if hasattr(self, "_builder_cls"):
             # multi-step model runner does not have `_builder_cls`
             self.builder = self._builder_cls(weakref.proxy(self))
-
+    # todo 加载模型
     def load_model(self) -> None:
         logger.info("Starting to load model %s...", self.model_config.model)
         with DeviceMemoryProfiler(self.device) as m:

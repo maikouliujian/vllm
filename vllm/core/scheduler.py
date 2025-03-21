@@ -31,6 +31,7 @@ ARTIFICIAL_PREEMPTION_PROB = 0.5
 ARTIFICIAL_PREEMPTION_MAX_CNT = 500
 
 
+
 class PreemptionMode(enum.Enum):
     """Preemption modes.
 
@@ -421,7 +422,7 @@ class PartialPrefillMetadata:
             scheduler_config=scheduler_config,
         )
 
-
+# todo 调度器！！！！！！
 class Scheduler:
 
     def __init__(

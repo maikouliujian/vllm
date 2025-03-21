@@ -106,7 +106,7 @@ def get_model_architecture(
             or model_config.model_impl == ModelImpl.TRANSFORMERS):
         architectures = resolve_transformers_fallback(model_config,
                                                       architectures)
-
+    # todo
     model_cls, arch = ModelRegistry.resolve_model_cls(architectures)
     if model_config.task == "embed":
         model_cls = as_embedding_model(model_cls)

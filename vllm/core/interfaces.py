@@ -23,7 +23,7 @@ class AllocStatus(enum.Enum):
     LATER = enum.auto()
     NEVER = enum.auto()
 
-
+# todo 块管理者
 class BlockSpaceManager(ABC):
 
     @staticmethod

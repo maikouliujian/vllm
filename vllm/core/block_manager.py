@@ -17,7 +17,7 @@ from vllm.utils import Device
 SeqId = int
 EncoderSeqId = str
 
-
+# todo
 class SelfAttnBlockSpaceManager(BlockSpaceManager):
     """BlockSpaceManager which manages the allocation of KV cache.
 

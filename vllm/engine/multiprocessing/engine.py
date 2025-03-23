@@ -67,7 +67,7 @@ class MQLLMEngine:
         *args: Arguments for :class:`LLMEngine`.
         **kwargs: Arguments for :class:`LLMEngine`.
     """
-
+    # todo 启动引擎！！！！！！
     def __init__(self,
                  ipc_path: str,
                  use_async_sockets: bool,
@@ -78,7 +78,7 @@ class MQLLMEngine:
         # output is immediately pickled and send over the socket, which frees
         # the python object to be reused again.
         kwargs['use_cached_outputs'] = True
-
+        # todo 构建LLMEngine
         self.engine = LLMEngine(*args, **kwargs)
         self.log_requests = log_requests
 
@@ -86,18 +86,22 @@ class MQLLMEngine:
         if self.use_async_sockets:
             self.engine.process_request_outputs_callback = \
                 self._async_socket_engine_callback
-
+        # todo 创建 ZeroMQ 上下文和套接字
+        # todo zmq（ZeroMQ）是一个 高性能异步消息队列库，用于 进程间（IPC）或分布式系统 的消息传输。
         self.ctx = zmq.Context()  # type: ignore[attr-defined]
 
         # Receive input from the client.
+        # todo 用于从客户端接收输入。
         self.input_socket = self.ctx.socket(zmq.constants.PULL)
         self.input_socket.bind(f"{ipc_path}{IPC_INPUT_EXT}")
 
         # Send output stream back to client.
+        # todo 用于将输出流发送回客户端。
         self.output_socket = self.ctx.socket(zmq.constants.PUSH)
         self.output_socket.bind(f"{ipc_path}{IPC_OUTPUT_EXT}")
 
         # Send heartbeats back to client.
+        # todo 用于向客户端发送心跳消息
         self.heartbeat_socket = self.ctx.socket(zmq.constants.PUSH)
         self.heartbeat_socket.bind(f"{ipc_path}{IPC_HEALTH_EXT}")
 
@@ -121,12 +125,14 @@ class MQLLMEngine:
                          ipc_path: str) -> "MQLLMEngine":
         # Setup plugins for each process
         from vllm.plugins import load_general_plugins
+        # todo # 这个函数的作用是为每个进程设置通用插件，可能是一些用于增强引擎功能的插件。
         load_general_plugins()
 
         use_async_sockets = vllm_config.model_config.use_async_output_proc
 
         return cls(
             vllm_config=vllm_config,
+            # todo # 获取一个执行器类
             executor_class=LLMEngine._get_executor_cls(vllm_config),
             ipc_path=ipc_path,
             usage_context=usage_context,
@@ -155,6 +161,7 @@ class MQLLMEngine:
                 logger.debug("Starting Startup Loop.")
                 self.run_startup_loop()
                 logger.debug("Starting Engine Loop.")
+                # todo 启动轮训
                 self.run_engine_loop()
             except Exception as e:
                 logger.exception(repr(e))
@@ -200,13 +207,15 @@ class MQLLMEngine:
 
             socket.send_multipart((identity, pickle.dumps(response)),
                                   copy=False)
-
+    # todo # LLMEngine 的核心忙循环，用于持续处理客户端请求并生成输出。
     def run_engine_loop(self):
         """Core busy loop of the LLMEngine."""
 
         while True:
+            # todo # 检查引擎中是否还有未完成的请求
             if not self.engine.has_unfinished_requests():
                 # Poll until there is work to do.
+                # todo # 检查是否有新的输入，POLLING_TIMEOUT_MS 是一个预定义的超时时间（以毫秒为单位）。如果在超时时间内没有新的输入（即 poll 方法返回 0），则执行以下操作
                 while self.input_socket.poll(timeout=POLLING_TIMEOUT_MS) == 0:
                     # When there's no work, check on engine health and send
                     # health status back to client
@@ -215,12 +224,14 @@ class MQLLMEngine:
                     logger.debug("Waiting for new requests in engine loop.")
 
             # Handle any input from the client.
+            # todo 处理新的请求！！！！！！
             self.handle_new_input()
 
             # Engine step.
             request_outputs = self.engine_step()
 
             # Send request outputs (if async, done in engine_step callback).
+            # todo # 发送请求的输出（如果是异步的，在 engine_step 回调函数中完成）
             if not self.use_async_sockets:
                 self._send_outputs(request_outputs)
 
@@ -245,28 +256,36 @@ class MQLLMEngine:
                                exception=e)
             self._send_outputs(rpc_err)
             raise e
-
+    # todo 当有新消息到达跳出等待循环进入handle_new_input方法，在这里面会进行消息的接收与反序列化，根据请求的类型进行不同的处理
     def handle_new_input(self):
         """Handle new input from the socket"""
         try:
+            # todo 使用 poll 方法检查输入套接字是否有新的数据到达。timeout=0 表示立即返回结果，不进行阻塞等待。
+            #  如果有数据到达（poll 结果不为 0），则进入循环体
             while self.input_socket.poll(timeout=0) != 0:
+                # todo 使用 recv_multipart 方法从套接字接收多部分消息，copy=False 表示不复制数据，以提高性能。
                 frames = self.input_socket.recv_multipart(copy=False)
+                # todo 将接收到的第一个部分的消息反序列化为 Python 对象，这个对象通常是一个请求对象
                 request = pickle.loads(frames[0].buffer)
-
+                # todo # 如果请求是 RPCProcessRequest 类型，表示需要处理一个具体的任务请求
                 if isinstance(request, RPCProcessRequest):
                     if len(frames) > 1:
                         # Use cloudpickle for logits processors
                         assert isinstance(request.params, SamplingParams)
                         lprocs = cloudpickle.loads(frames[1].buffer)
                         request.params.logits_processors = lprocs
+                    #todo  接收封装的请求！！！！
                     self._handle_process_request(request)
+                # todo # 如果请求是 RPCAbortRequest 类型，表示需要中止某个请求，调用 _handle_abort_request 方法处理该请求
                 elif isinstance(request, RPCAbortRequest):
                     self._handle_abort_request(request)
+                # todo # 如果请求是 RPCUProfileRequest 类型，根据请求的值判断是开始还是停止性能分析。
                 elif isinstance(request, RPCUProfileRequest):
                     if request == RPCUProfileRequest.START_PROFILE:
                         self.start_profile()
                     else:
                         self.stop_profile()
+                # todo # 如果请求是 RPCLoadAdapterRequest 类型，表示需要加载适配器
                 elif isinstance(request, RPCLoadAdapterRequest):
                     self._handle_load_adapter_request(request)
                 elif isinstance(request, RPCResetPrefixCacheRequest):
@@ -285,7 +304,7 @@ class MQLLMEngine:
             self._set_errored(e)
             self._send_unhealthy(e)
             raise e
-
+    # todo 处理新的请求！！！！！！
     def _handle_process_request(self, request: RPCProcessRequest):
         """Handle RPCProcessRequest by adding it to the LLMEngine."""
         request_id = request.request_id
@@ -297,6 +316,8 @@ class MQLLMEngine:
             self._send_outputs(rpc_err)
 
         try:
+            # todo 将请求的相关信息（如请求 ID、提示信息、采样参数、LoRA 请求等）传递给引擎，让引擎处理该请求。
+            # todo 进入到 LLMEngine 的add_request中,添加到调度器的waiting队列中进行调度
             self.engine.add_request(
                 request_id=request_id,
                 prompt=request.prompt,
@@ -432,7 +453,7 @@ def run_mp_engine(vllm_config: VllmConfig, usage_context: UsageContext,
     try:
         # Ensure we can serialize transformer config before spawning
         maybe_register_config_serialize_by_value()
-
+        # todo 返回 MQLLMEngine
         engine = MQLLMEngine.from_vllm_config(
             vllm_config=vllm_config,
             usage_context=usage_context,

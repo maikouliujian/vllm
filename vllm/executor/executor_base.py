@@ -24,6 +24,7 @@ logger = init_logger(__name__)
 _R = TypeVar("_R", default=Any)
 
 
+# todo 执行器！！！！！！
 class ExecutorBase(ABC):
     """Base class for all executors.
 
@@ -49,6 +50,7 @@ class ExecutorBase(ABC):
         self.speculative_config = vllm_config.speculative_config
         self.prompt_adapter_config = vllm_config.prompt_adapter_config
         self.observability_config = vllm_config.observability_config
+        # todo 初始化执行器
         self._init_executor()
         self.is_sleeping = False
 

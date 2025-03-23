@@ -137,12 +137,13 @@ async def build_async_engine_client(
     # Context manager to handle engine_client lifecycle
     # Ensures everything is shutdown and cleaned up on error/exit
     engine_args = AsyncEngineArgs.from_cli_args(args)
-
+    # todo 核心！！！！！！
     async with build_async_engine_client_from_engine_args(
             engine_args, args.disable_frontend_multiprocessing) as engine:
         yield engine
 
-
+# todo EngineClient ！！！！！！
+# todo 创建一个异步的 EngineClient 对象，并确保在使用完毕后正确地关闭和清理资源。
 @asynccontextmanager
 async def build_async_engine_client_from_engine_args(
     engine_args: AsyncEngineArgs,
@@ -221,6 +222,8 @@ async def build_async_engine_client_from_engine_args(
         # Start RPCServer in separate process (holds the LLMEngine).
         # the current process might have CUDA context,
         # so we need to spawn a new process
+        # todo 在单独的进程中启动远程过程调用（RPC）服务器（该服务器持有大语言模型推理引擎（LLMEngine））！！！！！！！
+        # todo 这里没有用fork的原因就是 避免资源共享
         context = multiprocessing.get_context("spawn")
 
         # Ensure we can serialize transformer config before spawning
@@ -229,13 +232,20 @@ async def build_async_engine_client_from_engine_args(
         # The Process can raise an exception during startup, which may
         # not actually result in an exitcode being reported. As a result
         # we use a shared variable to communicate the information.
+        # todo # 进程在启动过程中可能会引发异常，而这实际上可能不会导致（系统）报告一个退出码。因此，我们使用一个共享变量来传递相关信息。
+        #         # 这里创建了一个共享的布尔型变量 engine_alive，用于在主进程和新进程之间共享信息，以判断引擎进程是否正常运行
+        #         # 这里创建新进程
         engine_alive = multiprocessing.Value('b', True, lock=False)
+        # todo 通过spawn启动新进程！！！！！！
         engine_process = context.Process(
+            # todo 进程函数【运行着 MQLLMEngine（大语言模型推理引擎）】！！！！！！！！！！！！！
             target=run_mp_engine,
             args=(vllm_config, UsageContext.OPENAI_API_SERVER, ipc_path,
                   engine_args.disable_log_stats,
                   engine_args.disable_log_requests, engine_alive))
+        # todo 进程启动 ！！！！！！
         engine_process.start()
+        # todo pid
         engine_pid = engine_process.pid
         assert engine_pid is not None, "Engine process failed to start."
         logger.info("Started engine process with PID %d", engine_pid)
@@ -246,6 +256,10 @@ async def build_async_engine_client_from_engine_args(
                 os.remove(socket_path)
 
         # Ensure we clean up the local IPC socket file on exit.
+        # todo atexit.register(_cleanup_ipc_path) 的作用是注册一个函数（这里是 _cleanup_ipc_path），当 Python 程序正常终止时（例如通过执行完所有代码、遇到 sys.exit() 调用等情况），注册的函数会被自动调用。
+        #         如果程序在运行中因为异常（比如未捕获的异常）而终止，只要 Python 解释器开始执行正常的退出流程，atexit 注册的函数仍然会被调用，从而执行相应的清理操作。
+        #         不过，如果程序是被外部强制杀死（例如使用 kill -9 <pid> 命令，其中 <pid> 是程序的进程 ID），这种情况下 Python 解释器没有机会执行正常的退出流程，atexit 注册的函数就不会被调用，也就不会执行清理操作了。
+        #         所以，一般来说，只要程序不是被外部以强制杀死的方式终止，atexit 注册的函数都会在程序终止时执行清理操作；但如果是被强制杀死，就无法保证清理操作会执行了
         atexit.register(_cleanup_ipc_path)
 
         # Build RPCClient, which conforms to EngineClient Protocol.
@@ -253,9 +267,12 @@ async def build_async_engine_client_from_engine_args(
                                engine_pid)
         mq_engine_client = await asyncio.get_running_loop().run_in_executor(
             None, build_client)
+        # todo 前面创建的新进程 run_mp_engine 运行着 LLMEngine（大语言模型推理引擎），该引擎负责处理具体的推理任务，如文本生成、问答等。而 MQLLMEngineClient 客户端则是与这个引擎进程进行交互的桥梁。客户端通过进程间通信（IPC）机制向引擎进程发送请求，引擎进程接收到请求后进行处理，并将结果返回给客户端。
+        #         客户端通过 ipc_path（进程间通信路径）与引擎建立连接，使用 engine_config 中的配置信息来确保通信的正确性，同时可以根据 engine_pid 来识别和管理对应的引擎进程。
         try:
             while True:
                 try:
+                    # todo 等待客户端启动！！！！！！
                     await mq_engine_client.setup()
                     break
                 except TimeoutError:
@@ -264,7 +281,7 @@ async def build_async_engine_client_from_engine_args(
                         raise RuntimeError(
                             "Engine process failed to start. See stack "
                             "trace for the root cause.") from None
-
+            # todo # 通过 yield 关键字返回创建的 MQLLMEngineClient 对象
             yield mq_engine_client  # type: ignore[misc]
         finally:
             # Ensure rpc server process was terminated
@@ -972,7 +989,7 @@ def create_server_socket(addr: tuple[str, int]) -> socket.socket:
 
     return sock
 
-
+# todo 异步启动服务
 async def run_server(args, **uvicorn_kwargs) -> None:
     logger.info("vLLM API server version %s", VLLM_VERSION)
     logger.info("args: %s", args)
@@ -1008,10 +1025,11 @@ async def run_server(args, **uvicorn_kwargs) -> None:
         raise KeyboardInterrupt("terminated")
 
     signal.signal(signal.SIGTERM, signal_handler)
-
+    # todo 【穿件引擎客户端】核心！！！！！！
     async with build_async_engine_client(args) as engine_client:
+        # todo 创建一个 FastAPI 应用实例
         app = build_app(args)
-
+        # todo 获取模型配置
         model_config = await engine_client.get_model_config()
         await init_app_state(engine_client, model_config, app.state, args)
 
@@ -1024,7 +1042,7 @@ async def run_server(args, **uvicorn_kwargs) -> None:
         logger.info("Starting vLLM API server on http%s://%s:%d",
                     "s" if is_ssl else "", _listen_addr(sock_addr[0]),
                     sock_addr[1])
-
+        # todo 启动 HTTP 服务器，并返回一个表示服务器关闭任务的 asyncio.Task 对象
         shutdown_task = await serve_http(
             app,
             sock=sock,
@@ -1045,7 +1063,7 @@ async def run_server(args, **uvicorn_kwargs) -> None:
 
     sock.close()
 
-
+# todo 服务启动入口！！！！！！
 if __name__ == "__main__":
     # NOTE(simon):
     # This section should be in sync with vllm/entrypoints/cli/main.py for CLI
@@ -1055,5 +1073,6 @@ if __name__ == "__main__":
     parser = make_arg_parser(parser)
     args = parser.parse_args()
     validate_parsed_serve_args(args)
-
+    # todo 整个服务器的入口点，它负责初始化服务器，设置信号处理程序，创建引擎客户端，构建 FastAPI 应用，
+    # todo 初始化应用状态，启动 HTTP 服务器，并在服务器关闭时进行清理。
     uvloop.run(run_server(args))

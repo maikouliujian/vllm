@@ -20,7 +20,7 @@ from vllm.worker.worker_base import WorkerWrapperBase
 
 logger = init_logger(__name__)
 
-
+# todo 执行器
 class MultiprocessingDistributedExecutor(DistributedExecutorBase):
     """Python multiprocessing-based distributed executor"""
 
@@ -32,6 +32,7 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
         indented blocks.
         """
         parallel_config = self.parallel_config
+        # todo # 获取并行配置信息
         world_size = parallel_config.world_size
         tensor_parallel_size = parallel_config.tensor_parallel_size
 
@@ -54,7 +55,7 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
             })
 
     def _init_executor(self) -> None:
-
+        # todo CUDA 环境检查
         from vllm.platforms import current_platform
         if current_platform.is_cuda_alike():
             self._check_cuda()
@@ -64,14 +65,17 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
         tensor_parallel_size = self.parallel_config.tensor_parallel_size
 
         # Set multiprocessing envs that are common to V0 and V1
+        # todo 设置多进程环境变量
         set_multiprocessing_worker_envs(self.parallel_config)
 
         # Multiprocessing-based executor does not support multi-node setting.
         # Since it only works for single node, we can use the loopback address
         # 127.0.0.1 for communication.
+        # todo # 由于基于多进程的执行器不支持多节点设置，仅适用于单节点，因此使用本地回环地址 127.0.0.1 和一个可用端口来初始化分布式通信方法
+        #     # 初始化分布式通信方法
         distributed_init_method = get_distributed_init_method(
             "127.0.0.1", get_open_port())
-
+        # todo # 初始化三个列表，分别用于存储所有工作进程、张量并行组中的驱动工作进程（除全局排名为 0 的进程）和非驱动工作进程
         self.workers: List[ProcessWorkerWrapper] = []
         # This is the list of workers that are rank 0 of each TP group EXCEPT
         # global rank 0. These are the workers that will broadcast to the
@@ -86,14 +90,18 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
             self.worker_monitor = None
         else:
             result_handler = ResultHandler()
+            # todo 循环创建 world_size - 1 个工作进程，每个进程使用 ProcessWorkerWrapper 进行包装，
+            #  并根据进程的排名判断是否为张量并行组的驱动进程，分别添加到相应的列表中
             for rank in range(1, world_size):
                 worker = ProcessWorkerWrapper(result_handler,
                                               WorkerWrapperBase,
                                               self.vllm_config, rank)
                 self.workers.append(worker)
                 if rank % tensor_parallel_size == 0:
+                    # todo driver节点
                     self.tp_driver_workers.append(worker)
                 else:
+                    # todo 非driver节点
                     self.non_driver_workers.append(worker)
 
             self.worker_monitor = WorkerMonitor(self.workers, result_handler)
@@ -102,7 +110,7 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
 
         # Set up signal handlers to shutdown the executor cleanly
         # sometimes gc does not work well
-
+        # todo 创建排名为 0 的驱动工作进程，使用 WorkerWrapperBase 进行包装
         self.driver_worker = WorkerWrapperBase(self.vllm_config, 0)
 
         all_kwargs = []
@@ -120,12 +128,16 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
                 or (rank % self.parallel_config.tensor_parallel_size == 0),
             )
             all_kwargs.append(kwargs)
+        # todo # 调用 self._run_workers 方法，依次执行工作进程的 init_worker、init_device 和 load_model 方法，完成工作进程的初始化、设备初始化和模型加载操作。
+        #  在加载模型时，根据 self.parallel_config.max_parallel_loading_workers 设置最大并发加载的工作进程数量
         self._run_workers("init_worker", all_kwargs)
         self._run_workers("init_device")
         self._run_workers("load_model",
                           max_concurrent_workers=self.parallel_config.
                           max_parallel_loading_workers)
+        # todo 使用 make_async 函数将驱动工作进程的 execute_model 方法转换为异步方法，方便后续异步调用
         self.driver_exec_model = make_async(self.driver_worker.execute_model)
+        # todo 初始化流水线并行锁列表 self.pp_locks
         self.pp_locks: Optional[List[asyncio.Lock]] = None
 
     def shutdown(self):
@@ -142,7 +154,7 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
         loop running in each of the remote workers.
         """
         return self.driver_worker.execute_model(execute_model_req)
-
+    # todo
     def _run_workers(
         self,
         method: Union[str, Callable],
@@ -171,21 +183,24 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
 
         if async_run_tensor_parallel_workers_only:
             # Run only non-driver workers and just return futures.
+            # todo # 异步仅在非驱动工作进程中运行
             return [
                 worker.execute_method(sent_method, *args, **kwargs)
                 for worker in self.non_driver_workers
             ]
 
         # Start all remote workers first.
+        # todo # 首先，在所有工作进程（self.workers）中同步运行指定的方法，将每个工作进程的未来结果对象存储在 worker_outputs 列表中。
         worker_outputs = [
             worker.execute_method(sent_method, *args, **kwargs)
             for worker in self.workers
         ]
-
+        # todo # 然后，调用 run_method 函数在驱动工作进程（self.driver_worker）中运行指定的方法，并将结果存储在 driver_worker_output 中。
         driver_worker_output = run_method(self.driver_worker, sent_method,
                                           args, kwargs)
 
         # Get the results of the workers.
+        # todo # 最后，将驱动工作进程的结果和所有工作进程的实际结果（通过调用 output.get() 获取）合并为一个列表返回。
         return [driver_worker_output
                 ] + [output.get() for output in worker_outputs]
 

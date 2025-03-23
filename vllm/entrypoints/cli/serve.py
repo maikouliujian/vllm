@@ -11,7 +11,7 @@ from vllm.entrypoints.openai.cli_args import (make_arg_parser,
                                               validate_parsed_serve_args)
 from vllm.utils import FlexibleArgumentParser
 
-
+# todo 命令行部署服务入口
 class ServeSubcommand(CLISubcommand):
     """The `serve` subcommand for the vLLM CLI. """
 
@@ -29,7 +29,7 @@ class ServeSubcommand(CLISubcommand):
 
         # EngineArgs expects the model name to be passed as --model.
         args.model = args.model_tag
-
+        # todo 异步启动服务
         uvloop.run(run_server(args))
 
     def validate(self, args: argparse.Namespace) -> None:

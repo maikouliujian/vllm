@@ -47,7 +47,7 @@ class RayWorkerMetaData:
     adjusted_rank: int = -1
     ip: str = ""
 
-
+# todo 执行器！！！！！！
 class RayDistributedExecutor(DistributedExecutorBase):
     """Ray-based distributed executor"""
 

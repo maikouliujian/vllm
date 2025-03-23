@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     VLLM_USE_RAY_COMPILED_DAG: bool = False
     VLLM_USE_RAY_COMPILED_DAG_NCCL_CHANNEL: bool = True
     VLLM_USE_RAY_COMPILED_DAG_OVERLAP_COMM: bool = False
+    # todo fork
     VLLM_WORKER_MULTIPROC_METHOD: str = "fork"
     VLLM_ASSETS_CACHE: str = os.path.join(VLLM_CACHE_ROOT, "assets")
     VLLM_IMAGE_FETCH_TIMEOUT: int = 5

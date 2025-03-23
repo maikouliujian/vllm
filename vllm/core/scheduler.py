@@ -548,7 +548,8 @@ class Scheduler:
     def num_decoding_tokens_per_seq(self) -> int:
         """The number of new tokens."""
         return 1
-
+    # todo # 将seq_group中所有序列添加进scheduler的self.waiting队列中
+    # todo self.waiting是一个双端队列实例，我们可以在队列的两端进行插入/删除操作
     def add_seq_group(self, seq_group: SequenceGroup) -> None:
         # Add sequence groups to the waiting queue.
         self.waiting.append(seq_group)

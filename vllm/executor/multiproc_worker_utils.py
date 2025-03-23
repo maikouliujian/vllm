@@ -140,22 +140,31 @@ class WorkerMonitor(threading.Thread):
         # Must be done after worker task queues are all closed
         self.result_handler.close()
 
-
+# todo worker节点
 class ProcessWorkerWrapper:
     """Local process wrapper for vllm.worker.Worker,
     for handling single-node multi-GPU tensor parallel."""
+    # todo 作用是对 vllm.worker.Worker 进行本地进程包装，用于处理单节点多 GPU 的张量并行
 
     def __init__(self, result_handler: ResultHandler,
                  worker_factory: Callable[[VllmConfig, int], Any],
                  vllm_config: VllmConfig, rank: int) -> None:
+        # todo 调用 get_mp_context 函数获取多进程上下文，该上下文用于创建和管理多进程。
         self.mp = get_mp_context()
+        # todo 创建任务队列和结果队列
+        # todo 可以看到创建了任务队列和结果队列，这里使用多进程上下文mp来创建队列，可以实现进程隔离和数据共享。
+        #  并且内部实现了锁机制，确保数据的完整性和一致性，即使多个工作进程同时对队列进行读写操作，同一时间也只有一个进程可以对队列进行修改。
         self._task_queue = self.mp.Queue()
+        # todo 用于处理工作进程的结果
         self.result_queue = result_handler.result_queue
         self.tasks = result_handler.tasks
+        # todo 启动进程【fork方式！！！！！！】
         self.process: BaseProcess = self.mp.Process(  # type: ignore[attr-defined]
+            # todo 启动进程的核心方法
             target=_run_worker_process,
             name="VllmWorkerProcess",
             kwargs=dict(
+                # todo 是一个可调用对象，用于创建工作进程
                 worker_factory=worker_factory,
                 task_queue=self._task_queue,
                 result_queue=self.result_queue,
@@ -200,7 +209,9 @@ class ProcessWorkerWrapper:
         self._task_queue.close()
         self.process.kill()
 
-
+# todo 运行worker的方法
+# todo 【工作进程会不断的从task_queue中获取任务，直到收到_TERMINATE 信号。对于每个任务，从任务中解包出 task_id、method、args 和 kwargs。
+#  然后调用 run_method 函数执行任务，并将结果存储在 output 中。最后将任务的处理结果（包括任务 ID、输出结果和异常信息）封装成 Result 对象，并放入 result_queue 中。】
 def _run_worker_process(
     worker_factory: Callable[[VllmConfig, int], Any],
     task_queue: Queue,
@@ -211,12 +222,15 @@ def _run_worker_process(
     """Worker process event loop"""
 
     # Add process-specific prefix to stdout and stderr
+    # todo # 获取当前进程的名称和进程 ID。
     process_name = get_mp_context().current_process().name
     pid = os.getpid()
+    # todo # 调用 _add_prefix 函数，为标准输出和标准错误输出添加进程特定的前缀，方便调试和日志记录。
     _add_prefix(sys.stdout, process_name, pid)
     _add_prefix(sys.stderr, process_name, pid)
 
     # Initialize worker
+    # todo # 初始化工作进程
     worker = worker_factory(vllm_config, rank)
     del worker_factory
 
@@ -224,11 +238,13 @@ def _run_worker_process(
     # and return task output in result_queue
     logger.info("Worker ready; awaiting tasks")
     try:
+        # todo 创建一个迭代器，不断从 task_queue 中获取任务，直到收到 _TERMINATE 信号。
         for items in iter(task_queue.get, _TERMINATE):
             output = None
             exception = None
             task_id, method, args, kwargs = items
             try:
+                # todo # 调用 run_method 函数执行任务，并将结果存储在 output 中
                 output = run_method(worker, method, args, kwargs)
             except SystemExit:
                 raise
@@ -239,6 +255,7 @@ def _run_worker_process(
                     "Exception in worker %s while processing method %s.",
                     process_name, method)
                 exception = e
+            # todo # 将任务的处理结果（包括任务 ID、输出结果和异常信息）封装成 Result 对象，并放入 result_queue 中返回给主进程。
             result_queue.put(
                 Result(task_id=task_id, value=output, exception=exception))
     except KeyboardInterrupt:

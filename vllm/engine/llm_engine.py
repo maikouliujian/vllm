@@ -65,6 +65,7 @@ from vllm.worker.model_runner_base import InputProcessingError
 logger = init_logger(__name__)
 _LOCAL_LOGGING_INTERVAL_SEC = 5
 
+# todo 泛型：_G 只能是 BaseTokenizerGroup 或其子类的类型
 _G = TypeVar("_G", bound=BaseTokenizerGroup, default=BaseTokenizerGroup)
 _O = TypeVar("_O", RequestOutput, PoolingRequestOutput)
 
@@ -248,10 +249,13 @@ class LLMEngine:
 
         self.log_stats = log_stats
         self.use_cached_outputs = use_cached_outputs
-
+        # todo 初始化分词器（tokenizer）和反分词器（detokenizer）
         if not self.model_config.skip_tokenizer_init:
+            # todo 初始化分词器
             self.tokenizer = self._init_tokenizer()
+            # todo 使用分词器初始化反分词器
             self.detokenizer = Detokenizer(self.tokenizer)
+            # todo 获取分词器组
             tokenizer_group = self.get_tokenizer_group()
         else:
             self.tokenizer = None
@@ -260,29 +264,39 @@ class LLMEngine:
 
         # Ensure that the function doesn't contain a reference to self,
         # to avoid engine GC issues
+        # todo # 检查 tokenizer_group 是否为 None。如果为 None，则会抛出一个断言错误，
+        #  并显示错误信息 "tokenizer_group cannot be None, make sure skip_tokenizer_init is False"。
+        #  目的是确保在调用 get_tokenizer_for_seq 函数之前，tokenizer_group 已经被正确初始化。
         def get_tokenizer_for_seq(sequence: Sequence) -> AnyTokenizer:
             assert tokenizer_group, ("tokenizer_group cannot be None, "
                                      "make sure skip_tokenizer_init is False")
+            # todo 根据 sequence.lora_request 中的信息选择的特定分词器
             return tokenizer_group.get_lora_tokenizer(sequence.lora_request)
-
+        # todo 初始化序列计数器
         self.seq_counter = Counter()
+        # todo 调用 self.model_config.try_get_generation_config() 方法来获取生成配置字段，
+        #  并将其赋值给。生成配置字段通常包含了模型生成文本时的一些参数，如最大长度、温度 self.generation_config_fields等。
         self.generation_config_fields = (
             self.model_config.try_get_generation_config())
-
+        # todo InputPreprocessor 是一个用于预处理输入数据的类，它接受模型配置、分词器和多模态注册表作为参数。
         self.input_preprocessor = InputPreprocessor(self.model_config,
                                                     self.tokenizer,
                                                     mm_registry)
-
+        # todo 管理输入数据的预处理
         self.input_registry = input_registry
+        # todo 输入处理器负责将输入数据转换为模型可以处理的格式
         self.input_processor = input_registry.create_input_processor(
             self.model_config)
-
+        # todo 使用传入的 executor_class 创建一个模型执行器，并将 vllm_config 作为参数传递给它。模型执行器负责管理模型的执行过程，包括模型的加载、推理等。！！！！！！
         self.model_executor = executor_class(vllm_config=vllm_config, )
-
+        # todo 检查 self.model_config.runner_type 是否不等于 "pooling"。如果不等于 "pooling"，
+        #  则调用 self._initialize_kv_caches() 方法来初始化 KV 缓存。KV 缓存用于存储模型在推理过程中的中间状态，以提高推理效率。
         if self.model_config.runner_type != "pooling":
             self._initialize_kv_caches()
 
         # If usage stat is enabled, collect relevant info.
+        # todo # 启用使用统计的情况下，收集并报告模型的使用情况。具体来说，它收集了模型的架构名称、使用上下文以及一些额外的键值对，这些键值对包含了模型的配置信息，
+        #     # 如数据类型、张量并行大小、块大小、GPU内存利用率、量化设置、是否启用LoRA、是否启用提示适配器、是否启用前缀缓存、是否强制执行急切模式以及是否禁用自定义全归约等。
         if is_usage_stats_enabled():
             from vllm.model_executor.model_loader import (
                 get_architecture_class_name)
@@ -291,6 +305,7 @@ class LLMEngine:
                 usage_context,
                 extra_kvs={
                     # Common configuration
+                    # todo Common configuration 通用配置
                     "dtype":
                     str(self.model_config.dtype),
                     "tensor_parallel_size":
@@ -301,12 +316,14 @@ class LLMEngine:
                     self.cache_config.gpu_memory_utilization,
 
                     # Quantization
+                    # todo Quantization 量化配置
                     "quantization":
                     self.model_config.quantization,
                     "kv_cache_dtype":
                     str(self.cache_config.cache_dtype),
 
                     # Feature flags
+                    # todo Feature flags 特性标志
                     "enable_lora":
                     bool(self.lora_config),
                     "enable_prompt_adapter":
@@ -318,24 +335,26 @@ class LLMEngine:
                     "disable_custom_all_reduce":
                     self.parallel_config.disable_custom_all_reduce,
                 })
-
+        # todo 检查 self.tokenizer 是否存在：如果存在，则调用 self.tokenizer.ping() 方法来确保分词器在不同进程中保持活跃状态。
         if self.tokenizer:
             # Ping the tokenizer to ensure liveness if it runs in a
             # different process.
             self.tokenizer.ping()
-
+        # todo 创建了一个列表 self.cached_scheduler_outputs，其中包含了与管道并行大小相同数量的 SchedulerOutputState 对象。这些对象用于存储调度器的输出状态。
         self.cached_scheduler_outputs = [
             SchedulerOutputState()
             for _ in range(self.parallel_config.pipeline_parallel_size)
         ]
-
+        # todo 创建了一个列表 self.scheduler_contexts，其中包含了与管道并行大小相同数量的 SchedulerContext 对象。
+        #  这些对象用于存储调度器的上下文信息，包括是否启用多步流输出。
         self.scheduler_contexts = [
             SchedulerContext(multi_step_stream_outputs=self.scheduler_config.
                              multi_step_stream_outputs)
             for _ in range(self.parallel_config.pipeline_parallel_size)
         ]
-
+        # todo 根据模型配置决定是否使用异步输出处理，并初始化相应的回调函数。
         if self.model_config.use_async_output_proc:
+            # todo 异步输出处理：使用 weak_bind 函数绑定 self._process_model_outputs 方法，确保在回调函数中不会持有对 self 的强引用，从而避免潜在的内存泄漏问题。
             process_model_outputs = weak_bind(self._process_model_outputs)
 
             self.async_callbacks = [
@@ -344,15 +363,22 @@ class LLMEngine:
                 for v_id in range(self.parallel_config.pipeline_parallel_size)
             ]
         else:
+            # todo 如果未启用异步输出处理，则将 self.async_callbacks 设置为空列表。
             self.async_callbacks = []
 
         # Currently used by AsyncLLMEngine to ensure quick append
         # of request outputs to asyncio queues
+        # todo 定义了一个名为 process_request_outputs_callback 的实例变量，
+        #  它是一个可选的可调用对象（Callable）。这个变量的初始值被设置为 None，表示在初始化时没有指定回调函数。
         self.process_request_outputs_callback: Optional[Callable] = None
 
         # Create the scheduler.
         # NOTE: the cache_config here have been updated with the numbers of
         # GPU and CPU blocks, which are profiled in the distributed executor.
+        # todo # 主要负责初始化调度器,创建了一个包含多个 Scheduler 对象的列表 self.scheduler。每个 Scheduler 对象的初始化参数:
+        #     # 初始化调度器，传入调度器配置、缓存配置、LoRA 配置、管道并行大小和异步回调函数（如果启用了异步输出处理）
+        #     # pipeline_parallel_size:并行的gpu数量, 会把可用的 物理blocks平均分配到并行的gpu上
+        #     # 同时, 每个gpu都会维护一个调度器scheduler, self.scheduler是包含多个scheduler的list
         if isinstance(self.vllm_config.scheduler_config.scheduler_cls, str):
             Scheduler = resolve_obj_by_qualname(
                 self.vllm_config.scheduler_config.scheduler_cls)
@@ -364,6 +390,7 @@ class LLMEngine:
                 self.parallel_config.pipeline_parallel_size,
                 self.async_callbacks[v_id]
                 if self.model_config.use_async_output_proc else None)
+            # todo 遍历管道并行单元的索引
             for v_id in range(self.parallel_config.pipeline_parallel_size)
         ]
 
@@ -393,8 +420,9 @@ class LLMEngine:
                 }
                 self.stat_loggers["prometheus"].info("cache_config",
                                                      self.cache_config)
-
+        # todo 初始化一个追踪器（tracer），用于收集和发送应用程序的性能数据到指定的端点。追踪器通常用于分布式系统中，以帮助开发者监控和调试应用程序的性能。
         self.tracer = None
+        # todo 是否指定了追踪器的端点。
         if self.observability_config.otlp_traces_endpoint:
             self.tracer = init_tracer(
                 "vllm.llm_engine",
@@ -402,6 +430,7 @@ class LLMEngine:
 
         # Create sequence output processor, e.g. for beam search or
         # speculative decoding.
+        # todo 创建一个输出处理器：
         self.output_processor = (
             SequenceGroupOutputProcessor.create_output_processor(
                 self.scheduler_config,
@@ -446,7 +475,7 @@ class LLMEngine:
         elapsed = time.time() - start
         logger.info(("init engine (profile, create kv cache, "
                      "warmup model) took %.2f seconds"), elapsed)
-
+    # todo 执行器！！！！！！
     @classmethod
     def _get_executor_cls(cls,
                           engine_config: VllmConfig) -> Type[ExecutorBase]:
@@ -470,6 +499,7 @@ class LLMEngine:
             assert not envs.VLLM_USE_RAY_SPMD_WORKER, (
                 "multiprocessing distributed executor backend does not "
                 "support VLLM_USE_RAY_SPMD_WORKER=1")
+            # todo MultiprocessingDistributedExecutor
             executor_class = MultiprocessingDistributedExecutor
         elif distributed_executor_backend == "uni":
             # JAX-style, single-process, multi-device executor.
@@ -605,8 +635,11 @@ class LLMEngine:
 
         self._validate_model_inputs(processed_inputs, lora_request)
         # Create the sequences.
+        # todo 每个KV cache block的大小（默认为16）
         block_size = self.cache_config.block_size
+        # todo 当前seq的id
         seq_id = next(self.seq_counter)
+        # todo 获取用于表示<eos>的token_id
         eos_token_id = self.input_preprocessor.get_eos_token_id(lora_request)
 
         if is_encoder_decoder_inputs(processed_inputs):
@@ -615,7 +648,7 @@ class LLMEngine:
         else:
             decoder_inputs = processed_inputs
             encoder_inputs = None
-
+        # todo 为当前序列创建Sequence对象，在Sequence对象中也包括对当前序列逻辑块们的管理
         seq = Sequence(seq_id, decoder_inputs, block_size, eos_token_id,
                        lora_request, prompt_adapter_request)
 
@@ -624,6 +657,7 @@ class LLMEngine:
             prompt_adapter_request))
 
         # Create a SequenceGroup based on SamplingParams or PoolingParams
+        # todo 每个prompt被包装成一个SequenceGroup实例
         if isinstance(params, SamplingParams):
             seq_group = self._create_sequence_group_with_sampling(
                 request_id,
@@ -655,6 +689,7 @@ class LLMEngine:
             for scheduler in self.scheduler
         ]
         min_cost_scheduler = self.scheduler[costs.index(min(costs))]
+        # todo 将seq_group中所有序列添加进scheduler的self.waiting队列中
         min_cost_scheduler.add_seq_group(seq_group)
 
         return seq_group
@@ -696,13 +731,14 @@ class LLMEngine:
         "inputs",
         additional_message="Please use the 'prompt' parameter instead.",
     )
+    # todo 处理请求
     def add_request(
             self,
-            request_id: str,
+            request_id: str, #todo 每个请求的唯一id
             prompt: Optional[PromptType] = None,
             params: Optional[Union[SamplingParams, PoolingParams]] = None,
-            arrival_time: Optional[float] = None,
-            lora_request: Optional[LoRARequest] = None,
+            arrival_time: Optional[float] = None,# todo 请求到达的时间。如果是None，则用当前系统时间
+            lora_request: Optional[LoRARequest] = None, # todo 如果是用lora模型做推理，相关的lora请求
             trace_headers: Optional[Mapping[str, str]] = None,
             prompt_adapter_request: Optional[PromptAdapterRequest] = None,
             priority: int = 0,
@@ -772,7 +808,7 @@ class LLMEngine:
             raise ValueError(
                 "Guided decoding and logits processors are not supported "
                 "in multi-step decoding")
-
+        # todo 设置该请求的到达时间
         if arrival_time is None:
             arrival_time = time.time()
 

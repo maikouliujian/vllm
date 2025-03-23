@@ -121,16 +121,22 @@ class MQLLMEngineClient(EngineClient):
         self.data_ipc_path = f"{ipc_path}{IPC_DATA_EXT}"
 
         # Stream for each individual request.
+        # todo # 为每个单独的请求进行流式处理。
         self.output_queues: Dict[str, asyncio.Queue] = {}
 
         # Loop to handle output of the LLMEngine periodically.
         # Started after the MQLLMEngine is ready so that we can
         # build the Client in an executor to enable clean shutdown.
+        # todo # 定期循环处理大语言模型引擎（LLMEngine）的输出。此循环在 MQLLM 引擎准备就绪后启动，
+        #  这样我们就可以在执行器中构建客户端，以实现干净的关闭（即有序、无错误地关闭系统或程序）
         self.output_loop: Optional[asyncio.Task] = None
 
         # Loop to check health of the LLMEngine periodically.
         # Started after the MQLLMEngine is ready.
+        # todo # 定期循环检查大语言模型引擎（LLMEngine）的运行状况。
+        #     # 此循环在 MQLLM 引擎准备就绪后启动。
         self.health_loop: Optional[asyncio.Task] = None
+        # todo 与engine_pid 绑定！！！！！！
         self._engine_process = psutil.Process(engine_pid)
 
     @staticmethod
@@ -186,22 +192,32 @@ class MQLLMEngineClient(EngineClient):
         """Get RequestOutputs from Engine and stream to Request Queues"""
 
         try:
+            # todo # 从引擎接收 RequestOutputs 并将其流式传输到请求队列中
             while True:
                 # Poll, checking for ENGINE_DEAD
+                # todo # 使用一个无限 while 循环来持续监听来自引擎的输出
+                #             # Poll, checking for ENGINE_DEAD
+                #             # 异步等待 output_socket 在指定的超时时间 VLLM_RPC_TIMEOUT 内有数据到达。如果在超时时间内没有数据到达，poll 方法返回 0。
                 while await self.output_socket.poll(timeout=VLLM_RPC_TIMEOUT
                                                     ) == 0:
                     logger.debug("Waiting for output from MQLLMEngine.")
 
                     # If errored, alert all running requests.
+                    # todo # 如果 self.errored 为 True，表示引擎出现错误，将 ENGINE_DEAD_ERROR 消息放入所有请求队列中，并返回以终止该方法。
                     if self.errored:
                         for queue_j in tuple(self.output_queues.values()):
                             queue_j.put_nowait(
                                 ENGINE_DEAD_ERROR(self._errored_with))
                         return
-
+                # todo # 异步接收来自 output_socket 的消息，copy=False 表示不复制消息数据，以提高性能。
                 message: Frame = await self.output_socket.recv(copy=False)
+                # todo # 使用 pickle 模块将接收到的消息反序列化为 request_outputs 对象。
                 request_outputs = pickle.loads(message.buffer)
-
+                # todo  is_error = isinstance(request_outputs, (BaseException, RPCError))：检查 request_outputs 是否为 BaseException 或 RPCError 类型，如果是，则表示出现错误。
+                #  如果是 RPCError 类型，提取 request_id、exception 和 is_engine_errored 信息。
+                #  如果不是 RPCError 类型，记录错误信息，表示应该收到 RPCError 而不是普通异常，将 request_id 设为 None，exception 设为接收到的错误，is_engine_errored 设为 True。
+                #  如果引擎出现严重错误且 self._errored_with 为空，将 self._errored_with 设为当前异常，并将 exception 设为 self.dead_error。
+                #  如果 request_id 为 None，将异常广播到所有请求队列中；否则，将异常放入对应的请求队列中。
                 is_error = isinstance(request_outputs,
                                       (BaseException, RPCError))
                 if is_error:
@@ -248,11 +264,13 @@ class MQLLMEngineClient(EngineClient):
                         if queue is not None:
                             queue.put_nowait(exception)
                 # Put each output into the appropriate queue.
+                # todo 正常输出处理
                 elif isinstance(
                         request_outputs,
                     (RPCAdapterLoadedResponse, RPCIsSleepingResponse)):
                     self._add_output(request_outputs)
                 else:
+                    # todo 遍历 request_outputs 中的每个请求输出，调用 self._add_output 方法处理
                     for request_output in request_outputs:
                         self._add_output(request_output)
 
@@ -270,13 +288,17 @@ class MQLLMEngineClient(EngineClient):
         """Setup the client before it starts sending server requests."""
 
         # Start output_loop
+        # todo 启动输出循环
         if self.output_loop is None:
             # only generate once to avoid multiple concurrent output_loops
             # this will lead to race conditions and wrong orders of tokens
             # returned by the engine
             # setup will be called multiple times during the startup of
             # the engine
+            #todo 注释解释了只启动一次输出处理循环的原因：避免多个并发的输出处理循环导致竞争条件和引擎返回的令牌顺序错误。
+            # 因为在引擎启动过程中，setup 方法可能会被多次调用。
             self.output_loop = asyncio.create_task(
+                # todo
                 self.run_output_handler_loop())
 
         with self.get_data_socket() as socket:
@@ -287,6 +309,7 @@ class MQLLMEngineClient(EngineClient):
 
             # Start health_loop.
             if self.health_loop is None:
+                # todo 用于定期检查服务器的健康状态。
                 self.health_loop = asyncio.create_task(
                     self.run_heartbeat_loop(timeout=VLLM_RPC_TIMEOUT))
 

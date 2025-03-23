@@ -1353,8 +1353,9 @@ class LoadConfig:
 @dataclass
 class ParallelConfig:
     """Configuration for the distributed execution."""
-
+    # todo 管道并行：将模型切分称多个阶段
     pipeline_parallel_size: int = 1  # Number of pipeline parallel groups.
+    # todo 张量并行：将某一层的张量切分成多个张量部分
     tensor_parallel_size: int = 1  # Number of tensor parallel groups.
     data_parallel_size: int = 1  # Number of data parallel groups.
     data_parallel_rank: int = 0  # Rank of the data parallel group.
@@ -3266,7 +3267,7 @@ class CompilationConfig(BaseModel):
                 "vllm.unified_attention_with_output",
             ]
 
-
+# todo vllm配置
 @dataclass
 class VllmConfig:
     """Dataclass which contains all vllm-related configuration. This
@@ -3274,7 +3275,9 @@ class VllmConfig:
     """
 
     model_config: ModelConfig = field(default=None, init=True)  # type: ignore
+    # todo 缓存配置
     cache_config: CacheConfig = field(default=None, init=True)  # type: ignore
+    # todo 并行配置
     parallel_config: ParallelConfig = field(default_factory=ParallelConfig,
                                             init=True)
     scheduler_config: SchedulerConfig = field(default_factory=SchedulerConfig,

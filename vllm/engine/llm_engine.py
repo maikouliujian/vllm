@@ -355,6 +355,7 @@ class LLMEngine:
         # todo 根据模型配置决定是否使用异步输出处理，并初始化相应的回调函数。
         if self.model_config.use_async_output_proc:
             # todo 异步输出处理：使用 weak_bind 函数绑定 self._process_model_outputs 方法，确保在回调函数中不会持有对 self 的强引用，从而避免潜在的内存泄漏问题。
+            # todo 处理模型输出！！！！！！
             process_model_outputs = weak_bind(self._process_model_outputs)
 
             self.async_callbacks = [
@@ -1049,7 +1050,7 @@ class LLMEngine:
         if do_update:
             seq_group.update_num_computed_tokens(
                 seq_group_meta.token_chunk_size)
-
+    # todo 处理模型输出！！！！！！
     def _process_model_outputs(self,
                                ctx: SchedulerContext,
                                request_id: Optional[str] = None) -> None:
@@ -1218,7 +1219,9 @@ class LLMEngine:
                 scheduler.free_finished_seq_groups()
 
         # For multi-step without streaming, don't create outputs each iteration
+        # todo # 处理多步非流式输出的情况
         if not is_last_step and not ctx.multi_step_stream_outputs:
+            # todo # 如果不是最后一步且不进行多步流式输出，且有完成的请求且存在处理请求输出的回调函数，则调用该回调函数并清空 ctx.request_outputs 列表。
             # Immediately process request outputs here (if callback is given)
             if (finished_now
                     and self.process_request_outputs_callback is not None):
@@ -1328,7 +1331,7 @@ class LLMEngine:
                         seq_group.update_num_computed_tokens(1)
                 else:
                     seq.append_token_id(sample.output_token, sample.logprobs)
-
+    # todo 处理请求！！！！！！
     def step(self) -> List[Union[RequestOutput, PoolingRequestOutput]]:
         """Performs one decoding iteration and returns newly generated results.
 
@@ -1462,12 +1465,13 @@ class LLMEngine:
                 # We use ExecuteModelRequest to pass the last sampled_token_ids
                 # to each of the non-last PP stages for in-place prepare_input.
                 last_sampled_token_ids=last_sampled_token_ids)
-
+            # todo 如果允许异步输出处理，则设置异步回调函数
             if allow_async_output_proc:
                 execute_model_req.async_callback = self.async_callbacks[
                     virtual_engine]
 
             try:
+                # todo 执行模型！！！！！！！！！！！！！！！
                 outputs = self.model_executor.execute_model(
                     execute_model_req=execute_model_req)
                 self._skip_scheduling_next_step = False

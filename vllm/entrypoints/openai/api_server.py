@@ -462,18 +462,21 @@ async def show_version():
     ver = {"version": VLLM_VERSION}
     return JSONResponse(content=ver)
 
-
+# todo # 一个用于处理聊天完成请求的路由处理程序
 @router.post("/v1/chat/completions",
              dependencies=[Depends(validate_json_request)])
 @with_cancellation
 @load_aware_call
 async def create_chat_completion(request: ChatCompletionRequest,
                                  raw_request: Request):
+    # todo chat 函数返回一个 OpenAIServingChat 对象，这个对象包含了处理聊天完成请求的逻辑
     handler = chat(raw_request)
     if handler is None:
+        # todo # 说明模型不支持聊天完成 API:调用 base 函数，并传入 raw_request 对象作为参数。
+        #  base 函数返回一个 OpenAIServing 对象，然后调用该对象的 create_error_response 方法来创建一个包含错误信息的响应
         return base(raw_request).create_error_response(
             message="The model does not support Chat Completions API")
-
+    # todo 返回一个生成器对象，这个生成器对象会生成聊天完成的结果！！！！！！
     generator = await handler.create_chat_completion(request, raw_request)
 
     if isinstance(generator, ErrorResponse):
@@ -481,8 +484,10 @@ async def create_chat_completion(request: ChatCompletionRequest,
                             status_code=generator.code)
 
     elif isinstance(generator, ChatCompletionResponse):
+        # todo 说明聊天完成请求处理成功
         return JSONResponse(content=generator.model_dump())
-
+    # todo 如果 generator 既不是 ErrorResponse 也不是 ChatCompletionResponse 类型，返回一个流式响应。StreamingResponse 类用于处理流式数据，
+    #  content 参数指定了生成器对象，media_type 参数指定了响应的媒体类型为 text/event-stream，这是一种用于服务器推送事件的媒体类型
     return StreamingResponse(content=generator, media_type="text/event-stream")
 
 

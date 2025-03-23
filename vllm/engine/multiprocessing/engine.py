@@ -84,6 +84,7 @@ class MQLLMEngine:
 
         self.use_async_sockets = use_async_sockets
         if self.use_async_sockets:
+            # todo # 如果使用异步输出则指定回调函数！！！！！！！
             self.engine.process_request_outputs_callback = \
                 self._async_socket_engine_callback
         # todo 创建 ZeroMQ 上下文和套接字
@@ -228,6 +229,7 @@ class MQLLMEngine:
             self.handle_new_input()
 
             # Engine step.
+            # todo 执行请求的核心代码！！！！！！！
             request_outputs = self.engine_step()
 
             # Send request outputs (if async, done in engine_step callback).
@@ -398,8 +400,9 @@ class MQLLMEngine:
                     outputs.exception = outputs.exception.cause
             except ImportError:
                 pass
-
+            # todo 将返回值序列化
             output_bytes = pickle.dumps(outputs)
+            # todo 将返回值返回到客户端
             self.output_socket.send_multipart((output_bytes, ), copy=False)
 
     def _send_healthy(self):
@@ -416,6 +419,7 @@ class MQLLMEngine:
     def _async_socket_engine_callback(self,
                                       request_outputs: REQUEST_OUTPUTS_T):
         """Callback used by engine to make socket handling async with GPU."""
+        # todo 由引擎所使用的回调函数，用于使套接字处理与 GPU 相关操作实现异步化。
         self._send_outputs(request_outputs)
         self.handle_new_input()
 

@@ -121,7 +121,7 @@ class MQLLMEngineClient(EngineClient):
         self.data_ipc_path = f"{ipc_path}{IPC_DATA_EXT}"
 
         # Stream for each individual request.
-        # todo # 为每个单独的请求进行流式处理。
+        # todo # 为每个单独的请求进行流式处理！！！！！！！！！！！！！
         self.output_queues: Dict[str, asyncio.Queue] = {}
 
         # Loop to handle output of the LLMEngine periodically.
@@ -188,6 +188,7 @@ class MQLLMEngineClient(EngineClient):
         except Exception as e:
             self._set_errored(e)
 
+    # todo 获取请求返回！！！！！！！
     async def run_output_handler_loop(self):
         """Get RequestOutputs from Engine and stream to Request Queues"""
 
@@ -268,6 +269,7 @@ class MQLLMEngineClient(EngineClient):
                 elif isinstance(
                         request_outputs,
                     (RPCAdapterLoadedResponse, RPCIsSleepingResponse)):
+                    # todo 添加输出
                     self._add_output(request_outputs)
                 else:
                     # todo 遍历 request_outputs 中的每个请求输出，调用 self._add_output 方法处理
@@ -280,8 +282,11 @@ class MQLLMEngineClient(EngineClient):
     def _add_output(self, request_output: Union[RequestOutput,
                                                 RPCAdapterLoadedResponse,
                                                 RPCIsSleepingResponse]):
+        # todo 检查是否找到了对应的请求队列。如果 queue 不为 None，说明存在与该 request_id 对应的请求队列。
         queue = self.output_queues.get(request_output.request_id)
         if queue is not None:
+            # todo 如果存在对应的请求队列，使用 put_nowait 方法将 request_output 对象添加到该队列中。
+            #  put_nowait 是一个非阻塞的方法，它会立即尝试将对象放入队列中，如果队列已满，可能会抛出异常。
             queue.put_nowait(request_output)
 
     async def setup(self):
@@ -492,6 +497,7 @@ class MQLLMEngineClient(EngineClient):
         "inputs",
         additional_message="Please use the 'prompt' parameter instead.",
     )
+    # todo 客户端请求进来！！！！！！
     def generate(
         self,
         prompt: Optional[PromptType] = None,
@@ -527,7 +533,7 @@ class MQLLMEngineClient(EngineClient):
             prompt = inputs
         assert (prompt is not None and sampling_params is not None
                 and request_id is not None)
-
+        # todo 处理请求！！！！！！
         return self._process_request(prompt, sampling_params, request_id,
                                      lora_request, trace_headers,
                                      prompt_adapter_request, priority)
@@ -604,7 +610,7 @@ class MQLLMEngineClient(EngineClient):
                                   lora_request,
                                   trace_headers,
                                   priority=priority))
-
+    # todo 处理请求
     async def _process_request(
         self,
         prompt: PromptType,
@@ -643,8 +649,10 @@ class MQLLMEngineClient(EngineClient):
                 )
 
         # 1) Create output queue for this requests.
+        # todo # 创建一个异步队列 queue，用于存储请求的输出结果。
         queue: asyncio.Queue[Union[RequestOutput,
                                    BaseException]] = asyncio.Queue()
+        # todo # 将该队列添加到 self.output_queues 字典中，键为请求 ID。
         self.output_queues[request_id] = queue
 
         try:
@@ -673,14 +681,18 @@ class MQLLMEngineClient(EngineClient):
             # 3) Send the RPCGenerateRequest to the MQLLMEngine.
             parts = (request_bytes,
                      lp_bytes) if lp_bytes else (request_bytes, )
+            # todo 将 RPCGenerateRequest（远程过程调用生成请求）发送到 MQLLMEngine
+            # todo 这个方法会走到 MQLLMEngine的run_engine_loop中
             await self.input_socket.send_multipart(parts, copy=False)
 
             # 4) Stream the RequestOutputs from the output queue. Note
             # that the output_loop pushes RequestOutput objects to this
             # queue after pulling them from the zmq socket.
+            # todo # 从输出队列中流式传输请求输出。请注意，输出循环在从 ZMQ 套接字中获取请求输出对象后，会将这些请求输出对象推送到该队列中。
             finished = False
             try:
                 while not finished:
+                    # todo 从队列中获取返回
                     request_output = await queue.get()
 
                     if isinstance(request_output, BaseException):
@@ -693,6 +705,7 @@ class MQLLMEngineClient(EngineClient):
                 if not finished and not self.errored:
                     await self.abort(request_id)
         finally:
+            # todo 无论请求处理是否成功，最后都要从 self.output_queues 字典中移除该请求的输出队列，进行清理操作。
             self.output_queues.pop(request_id)
 
     async def start_profile(self) -> None:

@@ -241,7 +241,7 @@ class OpenAIServingChat(OpenAIServing):
 
                 trace_headers = (None if raw_request is None else await
                                  self._get_trace_headers(raw_request.headers))
-
+                # todo 调用 self.engine_client.beam_search 方法进行波束搜索
                 if isinstance(sampling_params, BeamSearchParams):
                     generator = self.engine_client.beam_search(
                         prompt=engine_prompt,
@@ -249,6 +249,7 @@ class OpenAIServingChat(OpenAIServing):
                         params=sampling_params,
                     )
                 else:
+                    # todo # self.engine_client.generate 方法进行普通生成，同时传入 LoRA 请求、跟踪头信息、提示适配器请求和请求优先级！！！！！！
                     generator = self.engine_client.generate(
                         engine_prompt,
                         sampling_params,
@@ -258,7 +259,7 @@ class OpenAIServingChat(OpenAIServing):
                         prompt_adapter_request=prompt_adapter_request,
                         priority=request.priority,
                     )
-
+                # todo # 将获取的生成器添加到 generators 列表中。
                 generators.append(generator)
         except ValueError as e:
             # TODO: Use a vllm-specific Validation Error
@@ -274,6 +275,7 @@ class OpenAIServingChat(OpenAIServing):
                 conversation, tokenizer, request_metadata)
 
         try:
+            # todo 将返回的生成器包装为完整响应
             return await self.chat_completion_full_generator(
                 request, result_generator, request_id, model_name,
                 conversation, tokenizer, request_metadata)

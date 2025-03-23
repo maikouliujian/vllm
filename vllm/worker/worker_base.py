@@ -382,7 +382,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
 
     def get_model(self) -> nn.Module:
         return self.model_runner.get_model()
-
+    # todo 执行模型！！！！！！！
     def execute_model(
         self,
         execute_model_req: Optional[ExecuteModelRequest] = None,

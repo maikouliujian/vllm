@@ -17,8 +17,9 @@ class XpuCommunicator(DeviceCommunicatorBase):
                  device_group: Optional[ProcessGroup] = None,
                  unique_name: str = ""):
         super().__init__(cpu_group, device, device_group, unique_name)
-
+    # todo all reduce
     def all_reduce(self, input_) -> torch.Tensor:
+        # todo 是 PyTorch 的集体通信操作，默认行为是 求和归约（所有进程的 input_ 相加后广播到每个进程）
         dist.all_reduce(input_, group=self.device_group)
         return input_
 

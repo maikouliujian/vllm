@@ -23,7 +23,7 @@ from vllm.worker.xpu_model_runner import XPUModelRunner
 
 logger = init_logger(__name__)
 
-
+# todo XPUWorker！！！！！！
 class XPUWorker(LoRANotSupportedWorkerBase, Worker):
     """A worker class that executes (a partition of) the model on a GPU.
     
@@ -56,7 +56,7 @@ class XPUWorker(LoRANotSupportedWorkerBase, Worker):
         if parallel_config and is_driver_worker:
             assert rank % parallel_config.tensor_parallel_size == 0, \
                    "Driver worker should be rank 0 of tensor parallel group."
-
+        # todo 每一个worker中有一个对应的model_runner
         self.model_runner = XPUModelRunner(  # type: ignore
             vllm_config=vllm_config,
             kv_cache_dtype=self.cache_config.cache_dtype,

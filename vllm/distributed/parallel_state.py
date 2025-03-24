@@ -718,7 +718,7 @@ def init_world_group(ranks: List[int], local_rank: int,
         group_name="world",
     )
 
-
+# todo
 def init_model_parallel_group(
     group_ranks: List[List[int]],
     local_rank: int,
@@ -918,6 +918,7 @@ def initialize_model_parallel(
     # the layout order is: DP x PP x TP
     # to get group_ranks for each dimension, transpose that dimension to the
     # last dimension, then reshape to 2D, then unbind the last dimension
+    # todo ！！！！！！！
     all_ranks = torch.arange(world_size).reshape(
         data_parallel_size, pipeline_model_parallel_size,
         tensor_model_parallel_size)  # noqa
@@ -942,6 +943,7 @@ def initialize_model_parallel(
     group_ranks = all_ranks.transpose(1, 2).reshape(
         -1, pipeline_model_parallel_size).unbind(0)
     group_ranks = [x.tolist() for x in group_ranks]
+    # todo _PP
     _PP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
@@ -989,7 +991,7 @@ def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
             local_rank=get_world_group().local_rank,
             config=vllm_config)
 
-
+# todo 切分模型！！！！！！
 def ensure_model_parallel_initialized(
     tensor_model_parallel_size: int,
     pipeline_model_parallel_size: int,
@@ -1002,6 +1004,7 @@ def ensure_model_parallel_initialized(
     backend = backend or torch.distributed.get_backend(
         get_world_group().device_group)
     if not model_parallel_is_initialized():
+        # todo
         initialize_model_parallel(tensor_model_parallel_size,
                                   pipeline_model_parallel_size, backend)
         return

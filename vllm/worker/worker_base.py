@@ -79,7 +79,7 @@ class WorkerBase:
         execute_model_req: Optional[ExecuteModelRequest] = None
     ) -> Optional[List[SamplerOutput]]:
         raise NotImplementedError
-
+    # todo worker节点执行
     def start_worker_execution_loop(self) -> None:
         """Execute model loop in parallel worker.
 
@@ -376,12 +376,15 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                     # notify all other workers to stop their execution loop.
                     broadcast_tensor_dict({}, src=0)
                 return None
+            # todo driver将execute_model_req广播出去
             return self._get_driver_input_and_broadcast(execute_model_req)
         else:
+            # todo worker获取广播execute_model_req
             return self._get_worker_input_from_broadcast()
 
     def get_model(self) -> nn.Module:
         return self.model_runner.get_model()
+
     # todo 执行模型！！！！！！！
     def execute_model(
         self,
@@ -390,7 +393,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         """Executes at least one model step on the given sequences, unless no
         sequences are provided."""
         start_time = time.perf_counter()
-
+        # todo 获取输入！！！！！！
         inputs = self.prepare_input(execute_model_req)
         if inputs is None:
             return None
@@ -399,7 +402,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         num_steps = worker_input.num_steps
         if (execute_model_req is not None and execute_model_req.spec_step_idx):
             kwargs["spec_step_idx"] = execute_model_req.spec_step_idx
-
+        # todo 执行worker
         self.execute_worker(worker_input)
 
         # If there is no input, we don't need to execute the model.
@@ -416,7 +419,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                     and self.observability_config.collect_model_execute_time):
                 orig_model_execute_time = intermediate_tensors.tensors.get(
                     "model_execute_time", torch.tensor(0)).item()
-
+        # todo 执行模型！！！！！！！
         output = self.model_runner.execute_model(
             model_input=model_input,
             kv_caches=self.kv_cache[worker_input.virtual_engine]
@@ -539,7 +542,7 @@ class WorkerWrapperBase:
             # suppress the warning in `update_environment_variables`
             del os.environ[key]
         update_environment_variables(envs)
-
+    # todo 第一步
     def init_worker(self, all_kwargs: List[Dict[str, Any]]) -> None:
         """
         Here we inject some common logic before initializing the worker.
@@ -598,6 +601,7 @@ class WorkerWrapperBase:
         kv_cache_config = kv_cache_configs[self.rpc_rank]
         self.worker.initialize_from_config(kv_cache_config)  # type: ignore
 
+    # todo 第二步
     def init_device(self):
         with set_current_vllm_config(self.vllm_config):
             # To make vLLM config available during device initialization

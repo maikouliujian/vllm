@@ -365,7 +365,7 @@ class ModelInputForXPUBuilder(ModelRunnerInputBuilderBase[ModelInputForXPU]):
             attn_metadata,
         )
 
-
+# todo 模型运行器
 class XPUModelRunner(ModelRunnerBase[ModelInputForXPUWithSamplingMetadata]):
     _model_input_cls: Type[ModelInputForXPUWithSamplingMetadata] = (
         ModelInputForXPUWithSamplingMetadata)
@@ -419,6 +419,7 @@ class XPUModelRunner(ModelRunnerBase[ModelInputForXPUWithSamplingMetadata]):
 
     def load_model(self) -> None:
         with DeviceMemoryProfiler() as m:
+            # todo 模型加载器！！！！！！
             self.model = get_model(vllm_config=self.vllm_config)
 
         self.model_memory_usage = m.consumed_memory
@@ -550,7 +551,7 @@ class XPUModelRunner(ModelRunnerBase[ModelInputForXPUWithSamplingMetadata]):
         return dataclasses.replace(model_input,
                                    sampling_metadata=sampling_metadata,
                                    virtual_engine=virtual_engine)
-
+    # todo 执行模型
     @torch.inference_mode()
     def execute_model(
         self,
@@ -585,6 +586,7 @@ class XPUModelRunner(ModelRunnerBase[ModelInputForXPUWithSamplingMetadata]):
             model_forward_end_time = time.time()
 
         # Compute the logits.
+        # todo 计算逻辑回归
         logits = self.model.compute_logits(hidden_or_intermediate_states,
                                            model_input.sampling_metadata)
 

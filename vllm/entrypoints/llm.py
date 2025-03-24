@@ -364,7 +364,7 @@ class LLM:
                                                GuidedDecodingRequest]] = None,
     ) -> list[RequestOutput]:
         ...
-
+    # todo 推理！！！！！！！
     @deprecate_kwargs(
         "prompt_token_ids",
         is_deprecated=lambda: LLM.DEPRECATE_LEGACY,
@@ -372,12 +372,19 @@ class LLM:
     )
     def generate(
         self,
+        # todo prompts可以是str，也可以是list[str]
         prompts: Union[Union[PromptType, Sequence[PromptType]],
                        Optional[Union[str, list[str]]]] = None,
+        # todo 采样超参，例如温度、top_k等；如果为None则使用vLLM默认的参数
         sampling_params: Optional[Union[SamplingParams,
                                         Sequence[SamplingParams]]] = None,
+        # todo prompt对应的token_id，如果没有提供的话，vllm会调用tokenizer进行
         prompt_token_ids: Optional[Union[list[int], list[list[int]]]] = None,
+        # todo 是否要展示process bar
         use_tqdm: bool = True,
+        # todo 如果想请求特定的lora_adapter，可以将它的path等信息包装在该请求中,
+        #  但vLLM建议尽量不要使用这种方式，因为私有的lora adapter可能会带来一些
+        #  安全性的问题
         lora_request: Optional[Union[list[LoRARequest], LoRARequest]] = None,
         prompt_adapter_request: Optional[PromptAdapterRequest] = None,
         guided_options_request: Optional[Union[LLMGuidedOptions,
@@ -452,7 +459,7 @@ class LLM:
         if sampling_params is None:
             # Use default sampling params.
             sampling_params = self.get_default_sampling_params()
-
+        # todo 校验！！！！！！
         self._validate_and_add_requests(
             prompts=parsed_prompts,
             params=sampling_params,
@@ -460,7 +467,7 @@ class LLM:
             prompt_adapter_request=prompt_adapter_request,
             guided_options=guided_options_request,
             priority=priority)
-
+        # todo 把这个batch的所有prompt都添加完后，执行推理，详情参见_run_engine
         outputs = self._run_engine(use_tqdm=use_tqdm)
         return self.engine_class.validate_outputs(outputs, RequestOutput)
 
@@ -1282,7 +1289,8 @@ class LLM:
         if isinstance(prompts, (str, dict)):
             # Convert a single prompt to a list.
             prompts = [prompts]
-
+        # todo 将request添加到engine中
+        # todo 在vLLM内核运算逻辑中，1个prompt算1个request，需要有1个全局唯一的request_id
         num_requests = len(prompts)
         if isinstance(params, list) and len(params) != num_requests:
             raise ValueError("The lengths of prompts and params "
@@ -1301,6 +1309,9 @@ class LLM:
 
         # Add requests to the engine.
         for i, prompt in enumerate(prompts):
+            # todo    # 将每个prompt添加进LLMEngine中，_add_request具体做了以下几件事：
+            #             # - 将每个prompt处理成特定的输入类型（SequenceGroup实例，后文会细说）
+            #             # - 将每个prompt加入Scheduler的waiting队列，等待处理
             self._add_request(
                 prompt,
                 params[i] if isinstance(params, Sequence) else params,
@@ -1319,6 +1330,7 @@ class LLM:
         priority: int = 0,
     ) -> None:
         request_id = str(next(self.request_counter))
+        # todo 调用llm_engine的add_request！！！！！！
         self.llm_engine.add_request(
             request_id,
             prompt,
@@ -1367,7 +1379,9 @@ class LLM:
         outputs: list[Union[RequestOutput, PoolingRequestOutput]] = []
         total_in_toks = 0
         total_out_toks = 0
+        # todo # 如果当前调度器中还有没完成推理的请求（调度器中waiting/running/swapped任一队列非空）
         while self.llm_engine.has_unfinished_requests():
+            # todo 执行一次推理！！！！！！！
             step_outputs = self.llm_engine.step()
             for output in step_outputs:
                 if output.finished:

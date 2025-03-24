@@ -47,7 +47,7 @@ class RayWorkerMetaData:
     adjusted_rank: int = -1
     ip: str = ""
 
-# todo 执行器！！！！！！
+# todo 执行器！！！！！！【则依赖 Ray 框架，能够支持跨机器的大规模分布式执行】
 class RayDistributedExecutor(DistributedExecutorBase):
     """Ray-based distributed executor"""
 
@@ -438,7 +438,8 @@ class RayDistributedExecutor(DistributedExecutorBase):
             "driver_worker does not exist for VLLM_USE_RAY_SPMD_WORKER=1")
         return self.driver_worker.execute_method("execute_model",
                                                  execute_model_req)
-
+    # todo 第三步
+    # todo 执行模型！！！！！！！
     def execute_model(
             self,
             execute_model_req: ExecuteModelRequest) -> List[SamplerOutput]:

@@ -279,6 +279,7 @@ class DistributedExecutorBase(ExecutorBase):
         # TODO: unify into collective_rpc
         if self.parallel_worker_tasks is None:
             self.parallel_worker_tasks = self._run_workers(
+                # todo 每一个worker执行！！！！！！！
                 "start_worker_execution_loop",
                 async_run_tensor_parallel_workers_only=True)
 

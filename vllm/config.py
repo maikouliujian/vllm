@@ -1628,6 +1628,7 @@ class SchedulerConfig:
     send_delta_data: bool = False
 
     # The scheduling policy to use. "fcfs" (default) or "priority".
+    # todo 目标是根据调度器总策略（FCFS，First Come First Serve，先来先服务）原则，对各个队列里的seq_group按照其arrival time进行排序
     policy: str = "fcfs"
 
     chunked_prefill_enabled: bool = field(init=False)

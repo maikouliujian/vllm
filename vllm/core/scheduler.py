@@ -444,7 +444,7 @@ class Scheduler:
         if (self.scheduler_config.runner_type == "pooling"
                 or self.cache_config.is_attention_free):
             version = "placeholder"
-
+        # todo SelfAttnBlockSpaceManager
         BlockSpaceManagerImpl = BlockSpaceManager.get_block_space_manager_class(
             version)
 
@@ -457,6 +457,7 @@ class Scheduler:
             num_cpu_blocks //= pipeline_parallel_size
 
         # Create the block space manager.
+        # todo block_manager
         self.block_manager = BlockSpaceManagerImpl(
             block_size=self.cache_config.block_size,
             num_gpu_blocks=num_gpu_blocks,
@@ -467,12 +468,15 @@ class Scheduler:
 
         # Sequence groups in the WAITING state.
         # Contain new prefill or preempted requests.
+        #  todo waiting队列用于存放所有还未开始做推理的seq_group
         self.waiting: Deque[SequenceGroup] = deque()
         # Sequence groups in the RUNNING state.
         # Contain decode requests.
+        # todo 队列用于存放当前正在做推理的seq_group。更准确地说，它存放的是上1个推理阶段被送去做推理的seq_group们
         self.running: Deque[SequenceGroup] = deque()
         # Sequence groups in the SWAPPED state.
         # Contain decode requests that are swapped out.
+        # todo swapped队列用于存放被抢占的seq_group
         self.swapped: Deque[SequenceGroup] = deque()
         # Sequence groups finished requests ids since last step iteration.
         # It lets the model know that any state associated with these requests
@@ -1453,7 +1457,7 @@ class Scheduler:
             if s.seq_group.get_num_uncomputed_tokens() != s.token_chunk_size
         ]
         return finishing + not_finishing
-
+    # todo 调度器的核型代码！！！！！！
     def _schedule(self) -> SchedulerOutputs:
         """Schedule queued requests."""
         if self.scheduler_config.chunked_prefill_enabled:
@@ -1491,7 +1495,7 @@ class Scheduler:
         no_single_seq = seq_group.sampling_params is None or (
             seq_group.sampling_params.n == 1)
         return no_single_seq
-
+    # todo 来自于llmEngine的1133行的step方法
     def schedule(
             self
     ) -> Tuple[List[SequenceGroupMetadata], SchedulerOutputs, bool]:
@@ -1499,7 +1503,7 @@ class Scheduler:
         # This function call changes the internal states of the scheduler
         # such as self.running, self.swapped, and self.waiting.
         scheduler_start_time = time.perf_counter()
-
+        # todo 调度SequenceGroup！！！！！！！
         scheduler_outputs: SchedulerOutputs = self._schedule()
         now = time.time()
 
@@ -1742,7 +1746,7 @@ class Scheduler:
             cows = self.block_manager.append_slots(seq, num_lookahead_slots)
             if len(cows) > 0:
                 blocks_to_copy.extend(cows)
-
+    # todo 竞争
     def _preempt(self, seq_group: SequenceGroup,
                  blocks_to_swap_out: List[Tuple[int, int]]) -> PreemptionMode:
         # If preemption mode is not specified, we determine the mode as follows:
@@ -1756,6 +1760,7 @@ class Scheduler:
         # over sequence groups with a single sequence.
         # TODO(woosuk): Support recomputation for sequence groups with multiple
         # sequences. This may require a more sophisticated CUDA kernel.
+        # todo # 如果没有指定被抢占的类型
         if self.user_specified_preemption_mode is None:
             if seq_group.get_max_num_running_seqs() == 1:
                 preemption_mode = PreemptionMode.RECOMPUTE
@@ -1781,8 +1786,13 @@ class Scheduler:
         self.num_cumulative_preemption += 1
 
         if preemption_mode == PreemptionMode.RECOMPUTE:
+            # todo # 如果抢占类型是“RECOMPUTE”
+            #         # 则去除该seq对对应物理块的引用，同时将该seq状态改为running，放入waiting队列最前面
+            #         # （详情参见self._preempt_by_recompute）
             self._preempt_by_recompute(seq_group)
         elif preemption_mode == PreemptionMode.SWAP:
+            # todo 如果抢占类型是“SWAP“
+            #         # 详情参见self._preempt_by_swap）
             self._preempt_by_swap(seq_group, blocks_to_swap_out)
         else:
             raise AssertionError("Invalid preemption mode.")
@@ -1792,11 +1802,17 @@ class Scheduler:
         self,
         seq_group: SequenceGroup,
     ) -> None:
+        # todo # 获取这个seq_group下正在running的所有seqs，
+        #         # preemption_mode是RECOMPUTE时需要满足正在running的seqs数量为1
         seqs = seq_group.get_seqs(status=SequenceStatus.RUNNING)
         assert len(seqs) == 1
         for seq in seqs:
+            # todo # 将这条seq的状态从running改成waiting（后续这条seq就要重计算了）
             seq.status = SequenceStatus.WAITING
+            # todo # 释放这条seq对应的物理块
+            # todo 即将对应物理块的引用-1，如果此时引用数量为0，说明对应物理块完全自由了，需要再将其放入自由物理块列表中
             self.free_seq(seq)
+            # todo # 因为这条seq需要重计算了，所以将其data对象下_num_computed_tokens设置为0
             seq.reset_state_for_recompute()
         self._free_seq_group_cross_attn_blocks(seq_group)
 

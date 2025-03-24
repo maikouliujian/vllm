@@ -655,6 +655,7 @@ class SequenceGroup:
 
     def __init__(self,
                  request_id: str,
+                 # todo 一个seq_group下包含若干seqs
                  seqs: list[Sequence],
                  arrival_time: float,
                  sampling_params: Optional[SamplingParams] = None,
@@ -825,7 +826,7 @@ class SequenceGroup:
     def set_finished_time(self, time: Optional[float]) -> None:
         """Sets the finished time for Request level timings."""
         self.metrics.finished_time = time
-
+    # todo 返回请求在其剩余生命周期中并行运行的最大序列数。
     def get_max_num_running_seqs(self) -> int:
         """The maximum number of sequences running in parallel in the remaining
         lifetime of the request."""

@@ -26,6 +26,7 @@ class CudaCommunicator(DeviceCommunicatorBase):
         use_pynccl = True
 
         self.use_pynccl = use_pynccl
+        # todo use_custom_allreduce！！！！！！
         self.use_custom_allreduce = use_custom_allreduce
 
         # lazy import to avoid documentation build error
@@ -44,6 +45,7 @@ class CudaCommunicator(DeviceCommunicatorBase):
         self.ca_comm: Optional[CustomAllreduce] = None
         if use_custom_allreduce and self.world_size > 1:
             # Initialize a custom fast all-reduce implementation.
+            # todo all reduce
             self.ca_comm = CustomAllreduce(
                 group=self.cpu_group,
                 device=self.device,

@@ -33,7 +33,7 @@ try:
         # Ray 2.9.x doesn't expose `available_resources_per_node`
         from ray._private.state import state as _state
         available_resources_per_node = _state._available_resources_per_node
-
+    # todo 真正的worker
     class RayWorkerWrapper(WorkerWrapperBase):
         """Ray wrapper for vllm.worker.Worker, allowing Worker to be
         lazily initialized after Ray sets CUDA_VISIBLE_DEVICES."""
@@ -62,7 +62,8 @@ try:
             gpu_ids = ray.get_runtime_context().get_accelerator_ids(
             )[device_key]
             return node_id, gpu_ids
-
+        # todo SPMD（Single Program Multiple Data）是一种并行程序设计模型，
+        #  其主要思想是使用同一个程序在多个处理器上并行执行，但每个处理器处理不同的数据
         def execute_model_spmd(
             self, req_or_tuple: Union[bytes,
                                       Tuple[bytes,

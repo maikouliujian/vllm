@@ -1331,7 +1331,8 @@ class LLMEngine:
                         seq_group.update_num_computed_tokens(1)
                 else:
                     seq.append_token_id(sample.output_token, sample.logprobs)
-    # todo 处理请求！！！！！！
+    # todo 处理请求【外侧轮训】！！！！！！
+    # todo step()：负责执行1次推理过程（1个prefill算1个次推理，每个decode各算1次推理）
     def step(self) -> List[Union[RequestOutput, PoolingRequestOutput]]:
         """Performs one decoding iteration and returns newly generated results.
 
@@ -1415,6 +1416,7 @@ class LLMEngine:
             # Schedule iteration
             (seq_group_metadata_list, scheduler_outputs,
              allow_async_output_proc
+             # todo 执行调度！！！！！！！
              ) = self.scheduler[virtual_engine].schedule()
 
             ctx.seq_group_metadata_list = seq_group_metadata_list
@@ -1453,7 +1455,7 @@ class LLMEngine:
             # will cause one virtual engine's microbatch to block the pipeline.
             last_sampled_token_ids = \
                 self._get_last_sampled_token_ids(virtual_engine)
-
+            # todo 模型请求参数！！！！！！
             execute_model_req = ExecuteModelRequest(
                 seq_group_metadata_list=seq_group_metadata_list,
                 blocks_to_swap_in=scheduler_outputs.blocks_to_swap_in,
@@ -1471,7 +1473,7 @@ class LLMEngine:
                     virtual_engine]
 
             try:
-                # todo 执行模型！！！！！！！！！！！！！！！
+                # todo 【把调度器的结果传给执行器！！！！！！】执行模型！！！！！！！！！！！！！！！
                 outputs = self.model_executor.execute_model(
                     execute_model_req=execute_model_req)
                 self._skip_scheduling_next_step = False

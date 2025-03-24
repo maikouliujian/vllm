@@ -20,7 +20,7 @@ from vllm.worker.worker_base import WorkerWrapperBase
 
 logger = init_logger(__name__)
 
-# todo 执行器
+# todo 执行器【适合单机多进程】
 class MultiprocessingDistributedExecutor(DistributedExecutorBase):
     """Python multiprocessing-based distributed executor"""
 

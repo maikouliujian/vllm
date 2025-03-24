@@ -88,16 +88,18 @@ class SelfAttnBlockSpaceManager(BlockSpaceManager):
         assert watermark >= 0.0
 
         self.enable_caching = enable_caching
-
+        # todo 水位线block数量，它起的是一个预警和缓冲的作用，防止在1次调度中把gpu上预留给KV Cache的显存空间打得过满，
+        #  出现一些意外风险（毕竟这个预留的显存空间也是我们估计出来的）。
         self.watermark_blocks = int(watermark * num_gpu_blocks)
-
+        # todo CpuGpuBlockAllocator
+        # todo 物理块分配者，负责实际为seq做物理块的分配、释放、拷贝等操作
         self.block_allocator = CpuGpuBlockAllocator.create(
             allocator_type="prefix_caching" if enable_caching else "naive",
             num_gpu_blocks=num_gpu_blocks,
             num_cpu_blocks=num_cpu_blocks,
             block_size=block_size,
         )
-
+        # todo 负责维护每个seq下的物理块列表，本质上它是一个字典，形式如{seq_id: BlockTable}
         self.block_tables: Dict[SeqId, BlockTable] = {}
         self.cross_block_tables: Dict[EncoderSeqId, BlockTable] = {}
 
@@ -105,7 +107,7 @@ class SelfAttnBlockSpaceManager(BlockSpaceManager):
             self.block_allocator, self.block_size, self.enable_caching)
         self._last_access_blocks_tracker = LastAccessBlocksTracker(
             self.block_allocator)
-
+    # todo gpu上是否有充足的空间为该seq_group分配物理块做【prefill】
     def can_allocate(self,
                      seq_group: SequenceGroup,
                      num_lookahead_slots: int = 0) -> AllocStatus:
@@ -115,6 +117,7 @@ class SelfAttnBlockSpaceManager(BlockSpaceManager):
         check_no_caching_or_swa_for_blockmgr_encdec(self, seq_group)
 
         seq = seq_group.get_seqs(status=SequenceStatus.WAITING)[0]
+        # todo 取出这个seq所有的逻辑块
         num_required_blocks = BlockTable.get_num_required_blocks(
             seq.get_token_ids(),
             block_size=self.block_size,
@@ -132,11 +135,15 @@ class SelfAttnBlockSpaceManager(BlockSpaceManager):
         if self.max_block_sliding_window is not None:
             num_required_blocks = min(num_required_blocks,
                                       self.max_block_sliding_window)
-
+        # todo 计算当前所有可用的物理块数量
         num_free_gpu_blocks = self.block_allocator.get_num_free_blocks(
             device=Device.GPU)
 
         # Use watermark to avoid frequent cache eviction.
+        # todo # 决定是否能为当前seq分配物理块
+        #         # ===========================================================================
+        #         # 如果设备中所有的物理块数量 - 该seq实际需要的物理块数量 < 水位线block数量，则不分配
+        #         # （说明当前seq太长了）
         if (self.num_total_gpu_blocks - num_required_blocks
                 < self.watermark_blocks):
             return AllocStatus.NEVER
@@ -203,6 +210,7 @@ class SelfAttnBlockSpaceManager(BlockSpaceManager):
             block_table = self._allocate_sequence(encoder_seq)
             self.cross_block_tables[request_id] = block_table
 
+    # todo 能否为seq_group分配物理块做【decode】
     def can_append_slots(self, seq_group: SequenceGroup,
                          num_lookahead_slots: int) -> bool:
         """Determine if there is enough space in the GPU KV cache to continue
@@ -216,7 +224,8 @@ class SelfAttnBlockSpaceManager(BlockSpaceManager):
         for known tokens. The contents of the lookahead slots are not defined.
         This is used by speculative decoding when speculating future tokens.
         """
-
+        # todo 对于这个seq_group，我们检查对于其中的每一个seq，
+        #         是否能至少分配一个空闲物理块给它
         num_touched_blocks = 0
         for seq in seq_group.get_seqs(status=SequenceStatus.RUNNING):
             block_table = self.block_tables[seq.seq_id]

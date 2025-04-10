@@ -495,6 +495,7 @@ class XPUModelRunner(ModelRunnerBase[ModelInputForXPUWithSamplingMetadata]):
                 dtype=self.model_config.dtype,
                 device=self.device)
         self.execute_model(model_input, None, intermediate_tensors)
+        # todo 同步等待计算完成
         torch.xpu.synchronize()
         return
 
@@ -551,7 +552,7 @@ class XPUModelRunner(ModelRunnerBase[ModelInputForXPUWithSamplingMetadata]):
         return dataclasses.replace(model_input,
                                    sampling_metadata=sampling_metadata,
                                    virtual_engine=virtual_engine)
-    # todo 执行模型
+    # todo 执行模型推理【会执行多次】
     @torch.inference_mode()
     def execute_model(
         self,
@@ -570,23 +571,28 @@ class XPUModelRunner(ModelRunnerBase[ModelInputForXPUWithSamplingMetadata]):
             model_forward_start_time = time.time()
         with set_forward_context(model_input.attn_metadata, self.vllm_config,
                                  model_input.virtual_engine):
+            # todo 1、model_executable【执行的是模型的前向计算】
+            # todo 在 PyTorch（或类似的深度学习框架）中，直接调用模型实例（如 model_executable(input)）会自动触发其前向计算（forward 方法）
             hidden_or_intermediate_states = model_executable(
-                input_ids=model_input.input_tokens,
-                positions=model_input.input_positions,
-                intermediate_tensors=intermediate_tensors,
+                input_ids=model_input.input_tokens, # todo 当前生成的 Token IDs
+                positions=model_input.input_positions, # todo token 的位置编码（处理可变长度输入）
+                intermediate_tensors=intermediate_tensors, # todo 最后一层的隐藏状态或中间结果（用于后续计算 logits）
                 **MultiModalKwargs.as_kwargs(model_input.multi_modal_kwargs
                                              or {},
                                              device=self.device))
         # Compute the logits in the last pipeline stage.
+        # todo 只有流水线并行的最后一个阶段（Rank）需要计算 logits 和采样，其他 Rank 直接返回中间状态。
         if not get_pp_group().is_last_rank:
             return hidden_or_intermediate_states
 
         if (self.observability_config is not None
                 and self.observability_config.collect_model_forward_time):
             model_forward_end_time = time.time()
-
+        ### todo 最后一个阶段（Rank）！！！！！！
         # Compute the logits.
-        # todo 计算逻辑回归
+        # todo 2、计算逻辑回归
+        # todo compute_logits‌是深度学习中的一个重要概念，通常指的是在模型的最后一层计算未归一化的输出值的过程。
+        #  这些输出值被称为logits，它们在经过softmax函数处理后，转化为概率分布，用于分类任务的预测‌1
         logits = self.model.compute_logits(hidden_or_intermediate_states,
                                            model_input.sampling_metadata)
 
@@ -598,6 +604,7 @@ class XPUModelRunner(ModelRunnerBase[ModelInputForXPUWithSamplingMetadata]):
             model_input.async_callback()
 
         # Sample the next token.
+        # todo 3、采样
         output: SamplerOutput = self.model.sample(
             logits=logits,
             sampling_metadata=model_input.sampling_metadata,

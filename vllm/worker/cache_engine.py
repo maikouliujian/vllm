@@ -63,6 +63,7 @@ class CacheEngine:
                                              use_mla=model_config.use_mla)
 
         # Initialize the cache.
+        # todo 初始化cache
         self.gpu_cache = self._allocate_kv_cache(
             self.num_gpu_blocks, self.device_config.device_type)
         self.cpu_cache = self._allocate_kv_cache(self.num_cpu_blocks, "cpu")

@@ -1249,6 +1249,7 @@ class Scheduler:
         swapped_in = SchedulerSwappedInOutputs.create_empty()
 
         # If any requests are swapped, prioritized swapped requests.
+        # todo 调度
         if not self.swapped:
             prefills = self._schedule_prefills(budget,
                                                curr_loras,
@@ -1495,6 +1496,7 @@ class Scheduler:
         no_single_seq = seq_group.sampling_params is None or (
             seq_group.sampling_params.n == 1)
         return no_single_seq
+
     # todo 来自于llmEngine的1133行的step方法
     def schedule(
             self

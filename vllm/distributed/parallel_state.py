@@ -418,6 +418,7 @@ class GroupCoordinator:
                                group=self.cpu_group)
 
         # Send object
+        # todo 发送到下一个GPU
         torch.distributed.send(object_tensor,
                                dst=self.ranks[dst],
                                group=self.cpu_group)
@@ -576,6 +577,7 @@ class GroupCoordinator:
         # `metadata_list` lives in CPU memory.
         # `send_object_list` has serialization & deserialization,
         # all happening on CPU. Therefore, we can use the CPU group.
+        # todo 发送到下一个GPU
         self.send_object(metadata_list, dst=dst)
         for tensor in tensor_list:
             if tensor.numel() == 0:

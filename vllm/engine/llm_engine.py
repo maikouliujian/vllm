@@ -636,7 +636,7 @@ class LLMEngine:
 
         self._validate_model_inputs(processed_inputs, lora_request)
         # Create the sequences.
-        # todo 每个KV cache block的大小（默认为16）
+        # todo 每个KV cache block的大小（默认为16 slot）
         block_size = self.cache_config.block_size
         # todo 当前seq的id
         seq_id = next(self.seq_counter)
@@ -894,6 +894,7 @@ class LLMEngine:
         if self.vllm_config.speculative_config is not None:
             draft_size = \
                 self.vllm_config.speculative_config.num_speculative_tokens + 1
+        # todo SequenceGroup
         seq_group = SequenceGroup(
             request_id=request_id,
             seqs=[seq],
@@ -1414,6 +1415,7 @@ class LLMEngine:
                 seq_group_metadata_list
         ) and not self._skip_scheduling_next_step:
             # Schedule iteration
+            # todo 调度器返回！！！！！！
             (seq_group_metadata_list, scheduler_outputs,
              allow_async_output_proc
              # todo 执行调度！！！！！！！

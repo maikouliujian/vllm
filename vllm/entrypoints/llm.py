@@ -364,7 +364,7 @@ class LLM:
                                                GuidedDecodingRequest]] = None,
     ) -> list[RequestOutput]:
         ...
-    # todo 推理！！！！！！！
+    # todo 【核心方法】推理！！！！！！！
     @deprecate_kwargs(
         "prompt_token_ids",
         is_deprecated=lambda: LLM.DEPRECATE_LEGACY,
@@ -467,7 +467,7 @@ class LLM:
             prompt_adapter_request=prompt_adapter_request,
             guided_options=guided_options_request,
             priority=priority)
-        # todo 把这个batch的所有prompt都添加完后，执行推理，详情参见_run_engine
+        # todo 把这个batch的所有prompt都添加完后，执行推理，详情参见_run_engine！！！！！！
         outputs = self._run_engine(use_tqdm=use_tqdm)
         return self.engine_class.validate_outputs(outputs, RequestOutput)
 
@@ -1381,7 +1381,7 @@ class LLM:
         total_out_toks = 0
         # todo # 如果当前调度器中还有没完成推理的请求（调度器中waiting/running/swapped任一队列非空）
         while self.llm_engine.has_unfinished_requests():
-            # todo 执行一次推理！！！！！！！
+            # todo step()方法：执行一次推理！！！！！！！
             step_outputs = self.llm_engine.step()
             for output in step_outputs:
                 if output.finished:

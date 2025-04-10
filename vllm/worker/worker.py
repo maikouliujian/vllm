@@ -308,11 +308,13 @@ class Worker(LocalOrDistributedWorkerBase):
             from contextlib import nullcontext
             context = nullcontext()
         with context:
+            # todo 初始化cacheengine
             self._init_cache_engine()
         self._warm_up_model()
 
     def _init_cache_engine(self):
         assert self.cache_config.num_gpu_blocks is not None
+        # todo kv cache
         self.cache_engine = [
             CacheEngine(self.cache_config, self.model_config,
                         self.parallel_config, self.device_config)

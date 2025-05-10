@@ -385,7 +385,7 @@ class DeepseekModel(nn.Module):
         hidden_states, _ = self.norm(hidden_states, residual)
         return hidden_states
 
-
+# todo  deepseek模型
 class DeepseekForCausalLM(nn.Module, SupportsPP):
 
     def __init__(self, *, vllm_config: VllmConfig, prefix: str = ""):

@@ -1739,7 +1739,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         if not bypass_model_exec:
             with set_forward_context(model_input.attn_metadata,
                                      self.vllm_config, virtual_engine):
-                # todo 1、获取中间结果
+                # todo 1、执行推理获取中间结果
                 hidden_or_intermediate_states = model_executable(
                     input_ids=model_input.input_tokens,
                     positions=model_input.input_positions,
@@ -1787,7 +1787,8 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
             return hidden_or_intermediate_states
         # todo 2、compute_logits
         # todo compute_logits‌是深度学习中的一个重要概念，通常指的是在模型的最后一层计算未归一化的输出值的过程。
-        #  这些输出值被称为logits，它们在经过softmax函数处理后，转化为概率分布，用于分类任务的预测‌1
+        #  这些输出值被称为logits，它们在经过softmax函数处理后，转化为概率分布，用于分类任务的预测‌
+        # todo self.model可以是各种模型，比如deepseek是DeepseekForCausalLM！！！！！！
         logits = self.model.compute_logits(hidden_or_intermediate_states,
                                            model_input.sampling_metadata)
 

@@ -526,6 +526,7 @@ class LLMEngine:
     ) -> "LLMEngine":
         return cls(
             vllm_config=vllm_config,
+            # todo 获取LLMEngine的executor！！！！！！
             executor_class=cls._get_executor_cls(vllm_config),
             log_stats=(not disable_log_stats),
             usage_context=usage_context,

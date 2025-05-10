@@ -154,7 +154,7 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
         loop running in each of the remote workers.
         """
         return self.driver_worker.execute_model(execute_model_req)
-    # todo
+    # todo 执行worker
     def _run_workers(
         self,
         method: Union[str, Callable],

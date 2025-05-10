@@ -121,7 +121,7 @@ def maybe_convert_int(value: Optional[str]) -> Optional[int]:
 # to extract the used env vars.
 
 # begin-env-vars-definition
-
+# todo 环境变量获取！！！！！！
 environment_variables: dict[str, Callable[[], Any]] = {
 
     # ================== Installation Time Env Vars ==================

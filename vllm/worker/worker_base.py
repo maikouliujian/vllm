@@ -544,7 +544,7 @@ class WorkerWrapperBase:
             # suppress the warning in `update_environment_variables`
             del os.environ[key]
         update_environment_variables(envs)
-    # todo 第一步
+    # todo 第一步执行
     def init_worker(self, all_kwargs: List[Dict[str, Any]]) -> None:
         """
         Here we inject some common logic before initializing the worker.
@@ -596,6 +596,7 @@ class WorkerWrapperBase:
                     worker_extension_cls, worker_class, extended_calls)
         with set_current_vllm_config(self.vllm_config):
             # To make vLLM config available during worker initialization
+            # todo 启动worker
             self.worker = worker_class(**kwargs)
             assert self.worker is not None
 
@@ -603,7 +604,7 @@ class WorkerWrapperBase:
         kv_cache_config = kv_cache_configs[self.rpc_rank]
         self.worker.initialize_from_config(kv_cache_config)  # type: ignore
 
-    # todo 第二步
+    # todo 第二步执行
     def init_device(self):
         with set_current_vllm_config(self.vllm_config):
             # To make vLLM config available during device initialization

@@ -111,6 +111,7 @@ class RayDistributedExecutor(DistributedExecutorBase):
             os.environ["RAY_USAGE_STATS_ENABLED"] = "0"
 
         # Create the parallel GPU workers.
+        # todo 初始化worker ray
         self._init_workers_ray(placement_group)
 
         self.input_encoder = msgspec.msgpack.Encoder(enc_hook=encode_hook)
@@ -215,6 +216,7 @@ class RayDistributedExecutor(DistributedExecutorBase):
                 )(RayWorkerWrapper).remote(vllm_config=self.vllm_config,
                                            rpc_rank=rank)
             else:
+                # todo 初始化ray worker！！！！！！！实际的工作的类是RayWorkerWrapper
                 worker = ray.remote(
                     num_cpus=0,
                     num_gpus=0,
@@ -388,6 +390,8 @@ class RayDistributedExecutor(DistributedExecutorBase):
                 or (rank % self.parallel_config.tensor_parallel_size == 0),
             )
             all_kwargs.append(kwargs)
+
+        # todo 执行worker的各种方法！！！！！！
         self._run_workers("init_worker", all_kwargs)
 
         self._run_workers("init_device")
@@ -497,6 +501,7 @@ class RayDistributedExecutor(DistributedExecutorBase):
         if async_run_tensor_parallel_workers_only:
             ray_workers = self.non_driver_workers
         ray_worker_outputs = [
+            # todo 执行worker中的不同的方法
             worker.execute_method.remote(sent_method, *args, **kwargs)
             for worker in ray_workers
         ]

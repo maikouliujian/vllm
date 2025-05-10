@@ -33,7 +33,7 @@ try:
         # Ray 2.9.x doesn't expose `available_resources_per_node`
         from ray._private.state import state as _state
         available_resources_per_node = _state._available_resources_per_node
-    # todo 真正的worker
+    # todo ray worker真正的类
     class RayWorkerWrapper(WorkerWrapperBase):
         """Ray wrapper for vllm.worker.Worker, allowing Worker to be
         lazily initialized after Ray sets CUDA_VISIBLE_DEVICES."""

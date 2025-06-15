@@ -158,6 +158,7 @@ class SamplingParams(
             output text. Defaults to False.
         ignore_eos: Whether to ignore the EOS token and continue generating
             tokens after the EOS token is generated.
+        # todo
         max_tokens: Maximum number of tokens to generate per output sequence.
         min_tokens: Minimum number of tokens to generate per output sequence
             before EOS or stop_token_ids can be generated

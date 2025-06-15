@@ -439,6 +439,7 @@ class LLMEngine:
                 self.scheduler,
                 self.seq_counter,
                 get_tokenizer_for_seq,
+                # todo 停止检测器
                 stop_checker=StopChecker(
                     self.scheduler_config.max_model_len,
                     get_tokenizer_for_seq,

@@ -337,6 +337,7 @@ def _try_inspect_model_cls(
 @dataclass
 class _ModelRegistry:
     # Keyed by model_arch
+    # todo 模型注册容器
     models: Dict[str, _BaseRegisteredModel] = field(default_factory=dict)
 
     def get_supported_archs(self) -> AbstractSet[str]:
@@ -373,7 +374,7 @@ class _ModelRegistry:
             if len(split_str) != 2:
                 msg = "Expected a string in the format `<module>:<class>`"
                 raise ValueError(msg)
-
+            # todo 注册模型
             model = _LazyRegisteredModel(*split_str)
         elif isinstance(model_cls, type) and (is_in_doc_build() or issubclass(
                 model_cls, nn.Module)):
@@ -523,7 +524,13 @@ class _ModelRegistry:
         model_cls, _ = self.inspect_model_cls(architectures)
         return not model_cls.supports_v0_only
 
-
+# todo 模型注册
+# todo 例如：
+"""
+ModelRegistry.register_model(
+        "DemoModel",
+        "vllm_xpu.models.demo_model:DemoModel")
+"""
 ModelRegistry = _ModelRegistry({
     model_arch:
     _LazyRegisteredModel(

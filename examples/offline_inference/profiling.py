@@ -197,7 +197,7 @@ def run_profile(context: ProfileContext, csv_output: Optional[str],
     max_model_len = llm.llm_engine.model_config.max_model_len
     max_num_batched_tokens = scheduler_config.max_num_batched_tokens
     max_num_seqs = scheduler_config.max_num_seqs
-
+    # todo
     if batch_size * prompt_len > max_num_batched_tokens:
         print(f"ERROR: chosen batch_size * prompt_len "
               f"({batch_size} * {prompt_len} = {batch_size * prompt_len}) is  "

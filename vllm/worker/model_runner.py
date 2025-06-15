@@ -1045,6 +1045,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         # in numpy and only copy the actual input content at every iteration.
         # The shape of the cached block table will be
         # (max batch size to capture, max seq len to capture / block size).
+        # todo
         self.graph_block_tables = np.zeros(
             (self.max_batchsize_to_capture, self.get_max_block_per_batch()),
             dtype=np.int32)
@@ -1105,11 +1106,12 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         if hasattr(self, "_builder_cls"):
             # multi-step model runner does not have `_builder_cls`
             self.builder = self._builder_cls(weakref.proxy(self))
-    # todo 加载模型
+    # todo 2、加载模型
     def load_model(self) -> None:
         logger.info("Starting to load model %s...", self.model_config.model)
         with DeviceMemoryProfiler(self.device) as m:
             time_before_load = time.perf_counter()
+            # todo 加载模型，会调用model_loader中的__init__中的方法
             self.model = get_model(vllm_config=self.vllm_config)
             if self.lora_config:
                 assert supports_lora(
@@ -1650,7 +1652,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                                    sampling_metadata=sampling_metadata,
                                    is_prompt=is_prompt,
                                    virtual_engine=virtual_engine)
-    # todo 模型推理
+    # todo 2、执行模型推理
     @torch.inference_mode()
     def execute_model(
         self,

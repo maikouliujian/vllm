@@ -113,7 +113,7 @@ def _initialize_model(
 ) -> nn.Module:
     """Initialize a model with the given configurations."""
     model_config = vllm_config.model_config
-    # todo 获取模型
+    # todo 获取模型结构
     model_class, _ = get_model_architecture(model_config)
 
     if vllm_config.quant_config is not None:
@@ -152,6 +152,7 @@ def _initialize_model(
     if "scheduler_config" in all_params:
         kwargs["scheduler_config"] = vllm_config.scheduler_config
     with set_current_vllm_config(vllm_config, check_compile=True):
+        # todo 初始化模型
         return model_class(**kwargs)
 
 
@@ -266,6 +267,7 @@ class DefaultModelLoader(BaseModelLoader):
         """Prepare weights for the model.
 
         If the model is not local, it will be downloaded."""
+        # todo 如果模型权重不在本地，那么需要去下载
         model_name_or_path = (self._maybe_download_from_modelscope(
             model_name_or_path, revision) or model_name_or_path)
 
@@ -414,16 +416,18 @@ class DefaultModelLoader(BaseModelLoader):
                               model_config.revision,
                               fall_back_to_pt=True,
                               allow_patterns_overrides=None)
-
+    # todo 加载模型！！！！！！
     def load_model(self, vllm_config: VllmConfig) -> nn.Module:
         device_config = vllm_config.device_config
         model_config = vllm_config.model_config
         target_device = torch.device(device_config.device)
         with set_default_torch_dtype(model_config.dtype):
             with target_device:
+                # todo 初始化模型
                 model = _initialize_model(vllm_config=vllm_config)
 
             weights_to_load = {name for name, _ in model.named_parameters()}
+            # todo 加载获取权重
             loaded_weights = model.load_weights(
                 self._get_all_weights(model_config, model))
             self.counter_after_loading_weights = time.perf_counter()
@@ -1484,5 +1488,5 @@ def get_model_loader(load_config: LoadConfig) -> BaseModelLoader:
 
     if load_config.load_format == LoadFormat.RUNAI_STREAMER:
         return RunaiModelStreamerLoader(load_config)
-
+    # todo
     return DefaultModelLoader(load_config)

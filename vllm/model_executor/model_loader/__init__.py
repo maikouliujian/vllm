@@ -8,9 +8,10 @@ from vllm.model_executor.model_loader.loader import (BaseModelLoader,
 from vllm.model_executor.model_loader.utils import (
     get_architecture_class_name, get_model_architecture)
 
-# todo 不同的类加载器
+# todo 不同的类加载器加载不同的模型
 def get_model(*, vllm_config: VllmConfig) -> nn.Module:
     loader = get_model_loader(vllm_config.load_config)
+    # todo 加载模型
     return loader.load_model(vllm_config=vllm_config)
 
 

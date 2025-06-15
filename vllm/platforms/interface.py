@@ -81,7 +81,7 @@ class DeviceCapability(NamedTuple):
         assert 0 <= self.minor < 10
         return self.major * 10 + self.minor
 
-
+### todo Platform
 class Platform:
     _enum: PlatformEnum
     device_name: str

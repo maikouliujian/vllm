@@ -45,6 +45,7 @@ class Scheduler:
         self.structured_output_manager = structured_output_manager
 
         # Scheduling constraints.
+        # todo 限制并发
         self.max_num_running_reqs = self.scheduler_config.max_num_seqs
         self.max_num_scheduled_tokens = \
             self.scheduler_config.max_num_batched_tokens
@@ -101,7 +102,7 @@ class Scheduler:
         # for these models.
         self.encoder_cache_manager = EncoderCacheManager(
             cache_size=encoder_cache_size)
-
+    # todo 调度逻辑！！！！！！
     def schedule(self) -> SchedulerOutput:
         # NOTE(woosuk) on the scheduling algorithm:
         # There's no "decoding phase" nor "prefill phase" in the scheduler.
@@ -117,6 +118,7 @@ class Scheduler:
         scheduled_new_reqs: list[Request] = []
         scheduled_resumed_reqs: list[Request] = []
         scheduled_running_reqs: list[Request] = []
+        # preempted【抢占】
         preempted_reqs: list[Request] = []
 
         # NOTE: structured_output_request_ids maps
@@ -169,6 +171,7 @@ class Scheduler:
                 continue
 
             while True:
+                # todo kv_cache_manager申请slot
                 new_blocks = self.kv_cache_manager.allocate_slots(
                     request, num_new_tokens)
                 if new_blocks is None:

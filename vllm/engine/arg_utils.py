@@ -91,7 +91,7 @@ def nullable_kvs(val: str) -> Optional[Mapping[str, int]]:
 @dataclass
 class EngineArgs:
     """Arguments for vLLM engine."""
-    model: str = 'facebook/opt-125m'
+    model: str = 'facebook/opt-125m' # todo 模型参数
     served_model_name: Optional[Union[str, List[str]]] = None
     tokenizer: Optional[str] = None
     hf_config_path: Optional[str] = None
@@ -124,6 +124,7 @@ class EngineArgs:
     swap_space: float = 4  # GiB
     cpu_offload_gb: float = 0  # GiB
     gpu_memory_utilization: float = 0.90
+    # todo
     max_num_batched_tokens: Optional[int] = None
     max_num_partial_prefills: Optional[int] = 1
     max_long_partial_prefills: Optional[int] = 1
@@ -233,8 +234,9 @@ class EngineArgs:
 
         # Setup plugins
         from vllm.plugins import load_general_plugins
+        # todo 加载通用插件
         load_general_plugins()
-
+    # todo 客户端参数
     @staticmethod
     def add_cli_args(parser: FlexibleArgumentParser) -> FlexibleArgumentParser:
         """Shared CLI arguments for vLLM engine."""
@@ -531,6 +533,7 @@ class EngineArgs:
             default=None,
             help='If specified, ignore GPU profiling result and use this number'
             ' of GPU blocks. Used for testing preemption.')
+        # todo max-num-batched-tokens
         parser.add_argument('--max-num-batched-tokens',
                             type=int,
                             default=EngineArgs.max_num_batched_tokens,
@@ -1119,11 +1122,11 @@ class EngineArgs:
             self.load_format = LoadFormat.RUNAI_STREAMER
 
         return ModelConfig(
-            model=self.model,
+            model=self.model, # todo 设置模型
             hf_config_path=self.hf_config_path,
             task=self.task,
             # We know this is not None because we set it in __post_init__
-            tokenizer=cast(str, self.tokenizer),
+            tokenizer=cast(str, self.tokenizer), # todo 设置tokenizer
             tokenizer_mode=self.tokenizer_mode,
             trust_remote_code=self.trust_remote_code,
             allowed_local_media_path=self.allowed_local_media_path,

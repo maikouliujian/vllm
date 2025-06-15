@@ -140,6 +140,7 @@ class ModelConfig:
         tokenizer_revision: The specific tokenizer version to use. It can be a
             branch name, a tag name, or a commit id. If unspecified, will use
             the default version.
+        # todo
         max_model_len: Maximum length of a sequence (including prompt and
             output). If None, will be derived from the model.
         spec_target_max_model_len: Specify the the maximum length for spec
@@ -150,6 +151,7 @@ class ModelConfig:
             disable CUDA graph and always execute the model in eager mode.
             If False, we will use CUDA graph and eager execution in hybrid.
             If None, the user did not specify, so default to False.
+        # todo cuda图，静态图，有优化能力，图可复用；eager：动态图，优化不够
         max_seq_len_to_capture: Maximum sequence len covered by CUDA graphs.
             When a sequence has context length larger than this, we fall back
             to eager mode. Additionally for encoder-decoder models, if the
@@ -262,8 +264,10 @@ class ModelConfig:
         override_generation_config: Optional[dict[str, Any]] = None,
         model_impl: Union[str, ModelImpl] = ModelImpl.AUTO,
     ) -> None:
+        # todo
         self.model = model
         self.hf_config_path = hf_config_path
+        # todo
         self.tokenizer = tokenizer
         self.tokenizer_mode = tokenizer_mode
         self.trust_remote_code = trust_remote_code
@@ -329,7 +333,7 @@ class ModelConfig:
 
         if self.enable_sleep_mode and not current_platform.is_cuda():
             raise ValueError("Sleep mode is only supported on CUDA devices.")
-
+        # todo 获取配置
         hf_config = get_config(self.hf_config_path or self.model,
                                trust_remote_code, revision, code_revision,
                                config_format)
@@ -1564,12 +1568,14 @@ class SchedulerConfig:
     runner_type: str = "generate"  # The runner type to launch for the model.
 
     # Maximum number of tokens to be processed in a single iteration.
+    # todo 可处理总token数据
     max_num_batched_tokens: int = field(default=None)  # type: ignore
 
     # Maximum number of sequences to be processed in a single iteration.
     max_num_seqs: int = 128
 
     # Maximum length of a sequence (including prompt and generated text).
+    # todo 输入token + 输出token 总数
     max_model_len: int = 8192
 
     # Maximum number of sequences that can be partially prefilled concurrently
@@ -3494,7 +3500,7 @@ class VllmConfig:
             self.compilation_config.pass_config.enable_noop = False
             self.compilation_config.level = CompilationLevel.PIECEWISE
             self.compilation_config.set_splitting_ops_for_v1()
-
+        # todo 设置cudagraph大小
         self._set_cudagraph_sizes()
 
         if self.cache_config is not None and \

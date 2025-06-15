@@ -67,7 +67,7 @@ class SchedulingBudget:
     # Number of actual non-cached tokens in the batch.
     _num_batched_tokens: int = 0
     _num_curr_seqs: int = 0
-
+    # todo 判断是否可以schedule
     def can_schedule(self, *, num_new_tokens: int, num_new_seqs: int):
         # We allow num_new_tokens to be 0 when the entire sequence has
         # been cached.
@@ -947,6 +947,7 @@ class Scheduler:
                 and not self.scheduler_config.is_multi_step):
             prompt_limit = self.scheduler_config.max_model_len
         else:
+            # todo 提示词限制！！！！！！
             prompt_limit = min(
                 self.scheduler_config.max_model_len,
                 self.scheduler_config.max_num_batched_tokens,
@@ -1005,6 +1006,7 @@ class Scheduler:
                 can_allocate = self.block_manager.can_allocate(seq_group)
                 if (num_new_tokens_uncached > 0
                         and can_allocate == AllocStatus.OK
+                        # todo 可以调度
                         and budget.can_schedule(
                             num_new_tokens=num_new_tokens_uncached,
                             num_new_seqs=num_new_seqs,
@@ -1106,7 +1108,7 @@ class Scheduler:
             if not enable_chunking:
                 num_prompt_tokens = waiting_seqs[0].get_len()
                 assert num_new_tokens == num_prompt_tokens
-
+            # todo
             prompt_limit = self._get_prompt_limit(seq_group)
             if num_new_tokens > prompt_limit:
                 logger.warning(
@@ -1231,6 +1233,7 @@ class Scheduler:
         be swapped or preempted.
         """
         # Include running requests to the budget.
+        # todo 预算！！！！！！
         budget = SchedulingBudget(
             token_budget=self.scheduler_config.max_num_batched_tokens,
             max_num_seqs=self.scheduler_config.max_num_seqs,
@@ -1249,14 +1252,16 @@ class Scheduler:
         swapped_in = SchedulerSwappedInOutputs.create_empty()
 
         # If any requests are swapped, prioritized swapped requests.
-        # todo 调度
+        # todo 调度，self.swapped为空时
         if not self.swapped:
+            # todo 调度prefill
             prefills = self._schedule_prefills(budget,
                                                curr_loras,
                                                enable_chunking=False)
 
         if len(prefills.seq_groups
                ) == 0 and self.scheduler_config.policy == "priority":
+            # todo
             self._schedule_priority_preemption(budget)
 
         # Don't schedule decodes if prefills are scheduled.
@@ -1464,6 +1469,7 @@ class Scheduler:
         if self.scheduler_config.chunked_prefill_enabled:
             return self._schedule_chunked_prefill()
         else:
+            # todo 设置资源预算！！！！！！
             return self._schedule_default()
 
     def _can_append_slots(self, seq_group: SequenceGroup,

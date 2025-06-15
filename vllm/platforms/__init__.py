@@ -217,12 +217,15 @@ builtin_platform_plugins = {
     'openvino': openvino_platform_plugin,
 }
 
-
+# todo 解析platform的全类名
 def resolve_current_platform_cls_qualname() -> str:
+    # todo 根据vllm.platform_plugins查看插件，返回对应的platform
+    # todo 如：xpu返回vllm_xpu.platforms.kunlun.XPU3Platform
     platform_plugins = load_plugins_by_group('vllm.platform_plugins')
 
     activated_plugins = []
-
+    # todo builtin_platform_plugins： vllm内置的platform
+    # todo platform_plugins： 外置的platform
     for name, func in chain(builtin_platform_plugins.items(),
                             platform_plugins.items()):
         try:
@@ -235,6 +238,7 @@ def resolve_current_platform_cls_qualname() -> str:
 
     activated_builtin_plugins = list(
         set(activated_plugins) & set(builtin_platform_plugins.keys()))
+    # todo 外部插件
     activated_oot_plugins = list(
         set(activated_plugins) & set(platform_plugins.keys()))
 
@@ -243,6 +247,7 @@ def resolve_current_platform_cls_qualname() -> str:
             "Only one platform plugin can be activated, but got: "
             f"{activated_oot_plugins}")
     elif len(activated_oot_plugins) == 1:
+        # todo 优先获取外部插件platform，如vllm_xpu.platforms.kunlun.XPU3Platform
         platform_cls_qualname = platform_plugins[activated_oot_plugins[0]]()
         logger.info("Platform plugin %s is activated",
                     activated_oot_plugins[0])
@@ -268,7 +273,9 @@ _init_trace: str = ''
 if TYPE_CHECKING:
     current_platform: Platform
 
-
+# todo from vllm.platforms import current_platform
+# todo【注：在 Python中，当从模块中导入一个不存在的属性时，会触发该模块的 __getattr__ 函数】
+# todo 这么实现是为了延迟加载platform，延迟加载 current_platform，确保插件注册完成后才初始化。
 def __getattr__(name: str):
     if name == 'current_platform':
         # lazy init current_platform.
@@ -284,7 +291,9 @@ def __getattr__(name: str):
         #    see the test failures).
         global _current_platform
         if _current_platform is None:
+            # todo 解析platform的全类名
             platform_cls_qualname = resolve_current_platform_cls_qualname()
+            # todo 返回类名：如XPU3Platform
             _current_platform = resolve_obj_by_qualname(
                 platform_cls_qualname)()
             global _init_trace

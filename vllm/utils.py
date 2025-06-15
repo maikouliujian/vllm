@@ -1895,6 +1895,7 @@ def resolve_obj_by_qualname(qualname: str) -> Any:
     """
     Resolve an object by its fully qualified name.
     """
+    # todo 切分全类名：vllm_xpu.platforms.kunlun.XPU3Platform
     module_name, obj_name = qualname.rsplit(".", 1)
     module = importlib.import_module(module_name)
     return getattr(module, obj_name)

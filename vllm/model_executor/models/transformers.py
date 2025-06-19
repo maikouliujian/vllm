@@ -104,7 +104,7 @@ def replace_linear_class(
         return_bias=False,
     )
 
-
+# todo 如果vllm没有支持的模型，会走到这里TransformersModel！！！！！！
 class TransformersModel(nn.Module, SupportsQuant, SupportsLoRA):
     embedding_padding_modules = ["lm_head"]
     embedding_modules = ["embed_tokens"
@@ -122,7 +122,7 @@ class TransformersModel(nn.Module, SupportsQuant, SupportsLoRA):
         self.config = config
         self.vocab_size = model_config.get_vocab_size()
         self.unpadded_vocab_size = model_config.get_vocab_size()
-
+        # todo 加载模型
         self.model: PreTrainedModel = AutoModel.from_config(
             self.config,
             attn_implementation="vllm",
@@ -209,6 +209,7 @@ class TransformersModel(nn.Module, SupportsQuant, SupportsLoRA):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
+        # todo
         model_output = self.model(
             input_ids[None, ...],
             use_cache=False,

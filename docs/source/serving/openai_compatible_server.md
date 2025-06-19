@@ -595,6 +595,7 @@ Result documents will be sorted by relevance, and the `index` property can be us
 
 Request:
 
+
 ```bash
 curl -X 'POST' \
   'http://127.0.0.1:8000/v1/rerank' \

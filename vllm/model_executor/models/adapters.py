@@ -11,6 +11,7 @@ from .interfaces_base import VllmModelForPooling, is_pooling_model
 if TYPE_CHECKING:
     from vllm.model_executor.layers.pooler import PoolingType
 
+# todo 模型适配器！！！！！！
 _T = TypeVar("_T", bound=type[nn.Module])
 
 _GENERATE_SUFFIXES = [
@@ -78,7 +79,7 @@ def _create_pooling_model_cls(
             pooling_metadata: PoolingMetadata,
         ) -> PoolerOutput:
             return self._pooler(hidden_states, pooling_metadata)
-
+        # todo 加载权重
         def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]):
             # TODO: Support uninitialized params tracking
 

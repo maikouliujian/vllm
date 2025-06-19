@@ -414,6 +414,7 @@ class ModelConfig:
 
         supported_tasks, task = self._resolve_task(task)
         self.supported_tasks = supported_tasks
+        # todo 根据不同的task类型获取不同的处理请求的handler
         self.task: Final = task
         if self.task in ("draft", "generate"):
             self.truncation_side = "left"

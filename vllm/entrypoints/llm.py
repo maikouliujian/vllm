@@ -1086,7 +1086,7 @@ class LLM:
                                                    PoolingRequestOutput)
 
         return [ScoringRequestOutput.from_base(item) for item in items]
-
+    # todo 打分 for reranker
     def score(
         self,
         text_1: Union[SingletonPrompt, Sequence[SingletonPrompt]],

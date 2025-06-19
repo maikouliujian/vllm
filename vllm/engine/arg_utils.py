@@ -95,7 +95,7 @@ class EngineArgs:
     served_model_name: Optional[Union[str, List[str]]] = None
     tokenizer: Optional[str] = None
     hf_config_path: Optional[str] = None
-    task: TaskOption = "auto"
+    task: TaskOption = "auto" # todo 决定了请求handler
     skip_tokenizer_init: bool = False
     tokenizer_mode: str = 'auto'
     trust_remote_code: bool = False
@@ -741,6 +741,7 @@ class EngineArgs:
                             default=EngineArgs.device,
                             choices=DEVICE_OPTIONS,
                             help='Device type for vLLM execution.')
+        # todo
         parser.add_argument('--num-scheduler-steps',
                             type=int,
                             default=1,
@@ -1206,6 +1207,7 @@ class EngineArgs:
         current_platform.pre_register_and_update()
 
         device_config = DeviceConfig(device=self.device)
+        # todo 模型配置
         model_config = self.create_model_config()
 
         # * If VLLM_USE_V1 is unset, we enable V1 for "supported features"

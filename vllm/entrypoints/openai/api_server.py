@@ -371,7 +371,7 @@ def embedding(request: Request) -> Optional[OpenAIServingEmbedding]:
 def score(request: Request) -> Optional[ServingScores]:
     return request.app.state.openai_serving_scores
 
-
+# todo 获取rerank的handler
 def rerank(request: Request) -> Optional[ServingScores]:
     return request.app.state.openai_serving_scores
 
@@ -509,7 +509,7 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
 
     return StreamingResponse(content=generator, media_type="text/event-stream")
 
-
+# todo embeddings接口
 @router.post("/v1/embeddings", dependencies=[Depends(validate_json_request)])
 @with_cancellation
 @load_aware_call
@@ -637,8 +637,10 @@ async def create_transcriptions(request: Annotated[TranscriptionRequest,
 async def do_rerank(request: RerankRequest, raw_request: Request):
     handler = rerank(raw_request)
     if handler is None:
+        # todo 异常
         return base(raw_request).create_error_response(
             message="The model does not support Rerank (Score) API")
+    # todo 处理推理
     generator = await handler.do_rerank(request, raw_request)
     if isinstance(generator, ErrorResponse):
         return JSONResponse(content=generator.model_dump(),
@@ -648,7 +650,7 @@ async def do_rerank(request: RerankRequest, raw_request: Request):
 
     assert_never(generator)
 
-
+# todo rerank接口
 @router.post("/v1/rerank", dependencies=[Depends(validate_json_request)])
 @with_cancellation
 async def do_rerank_v1(request: RerankRequest, raw_request: Request):
@@ -657,7 +659,7 @@ async def do_rerank_v1(request: RerankRequest, raw_request: Request):
         " API, we have located it at `/rerank`. Please update your client "
         "accordingly. (Note: Conforms to JinaAI rerank API)")
 
-    return await do_rerank(request, raw_request)
+    return await do_rerank(request, raw_request=raw_request)
 
 
 @router.post("/v2/rerank", dependencies=[Depends(validate_json_request)])
@@ -956,6 +958,7 @@ async def init_app_state(
         state.openai_serving_models,
         request_logger=request_logger) if model_config.task in (
             "score", "embed", "pooling") else None
+    # todo jinaai_serving_reranking !!!!!!
     state.jinaai_serving_reranking = ServingScores(
         engine_client,
         model_config,
@@ -1036,6 +1039,7 @@ async def run_server(args, **uvicorn_kwargs) -> None:
         app = build_app(args)
         # todo 获取模型配置
         model_config = await engine_client.get_model_config()
+        # todo 初始化app_state,将来作为不同请求的handler逻辑【重点】！！！！！！
         await init_app_state(engine_client, model_config, app.state, args)
 
         def _listen_addr(a: str) -> str:

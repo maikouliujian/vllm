@@ -89,7 +89,7 @@ class ServingScores(OpenAIServing):
         for i, engine_prompt in enumerate(engine_prompts):
 
             request_id_item = f"{request_id}-{i}"
-
+            # todo 处理请求
             self._log_inputs(request_id_item,
                              input_texts[i],
                              params=pooling_params,
@@ -277,6 +277,7 @@ class ServingScores(OpenAIServing):
                 trace_headers=trace_headers)
 
         else:
+            # todo
             return await self._embedding_score(
                 tokenizer=tokenizer,
                 texts_1=texts_1,
@@ -327,6 +328,7 @@ class ServingScores(OpenAIServing):
             # TODO: Use a vllm-specific Validation Error
             return self.create_error_response(str(e))
 
+    # todo rerank请求入口！！！！！！
     async def do_rerank(
         self,
         request: RerankRequest,
@@ -350,6 +352,7 @@ class ServingScores(OpenAIServing):
         top_n = request.top_n if request.top_n > 0 else len(documents)
 
         try:
+            # todo 执行reranker逻辑，计算相似度等
             final_res_batch = await self._run_scoring(
                 request.query,
                 documents,
@@ -358,6 +361,7 @@ class ServingScores(OpenAIServing):
                 raw_request,
                 request.truncate_prompt_tokens,
             )
+            # todo 处理rerank接口响应
             return self.request_output_to_rerank_response(
                 final_res_batch,
                 request_id,
@@ -405,7 +409,7 @@ class ServingScores(OpenAIServing):
             data=items,
             usage=usage,
         )
-
+    # todo 计算rerank_response
     def request_output_to_rerank_response(
             self, final_res_batch: list[PoolingRequestOutput], request_id: str,
             model_name: str, documents: list[str],
@@ -417,7 +421,7 @@ class ServingScores(OpenAIServing):
         num_prompt_tokens = 0
         for idx, final_res in enumerate(final_res_batch):
             classify_res = ScoringRequestOutput.from_base(final_res)
-
+            # todo RerankResult 返回
             result = RerankResult(
                 index=idx,
                 document=RerankDocument(text=documents[idx]),
@@ -428,6 +432,7 @@ class ServingScores(OpenAIServing):
             num_prompt_tokens += len(prompt_token_ids)
 
         # sort by relevance, then return the top n if set
+        # todo 排序返回
         results.sort(key=lambda x: x.relevance_score, reverse=True)
         if top_n < len(documents):
             results = results[:top_n]

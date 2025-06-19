@@ -37,8 +37,10 @@ def is_transformers_impl_compatible(
     if mod is None:
         return False
     if hasattr(mod, "supports_backend"):
+        # todo 是否支持attention_backend后端
         return mod.is_backend_compatible()
     else:
+        # todo 是否_supports_flex_attn
         return mod._supports_flex_attn
 
 
@@ -65,21 +67,26 @@ def resolve_transformers_fallback(model_config: ModelConfig,
         # TODO(Isotr0py): Further clean up these raises.
         # perhaps handled them in _ModelRegistry._raise_for_unsupported?
         if model_config.model_impl == ModelImpl.TRANSFORMERS:
+            # todo 不兼容
             if not is_transformers_impl_compatible(arch, custom_model_module):
                 raise ValueError(
                     f"The Transformers implementation of {arch} is not "
                     "compatible with vLLM.")
             architectures[i] = "TransformersModel"
         if model_config.model_impl == ModelImpl.AUTO:
+            # todo 不兼容!!!!!!
             if not is_transformers_impl_compatible(arch, custom_model_module):
+                # MiniCPM
                 raise ValueError(
                     f"{arch} has no vLLM implementation and the Transformers "
                     "implementation is not compatible with vLLM. Try setting "
                     "VLLM_USE_V1=0.")
+            # todo
             logger.warning(
                 "%s has no vLLM implementation, falling back to Transformers "
                 "implementation. Some features may not be supported and "
                 "performance may not be optimal.", arch)
+            # todo vllm没有支持的模型，会走到这里
             architectures[i] = "TransformersModel"
     return architectures
 
@@ -98,15 +105,17 @@ def get_model_architecture(
             and model_config.quantization not in mixtral_supported
             and "MixtralForCausalLM" in architectures):
         architectures = ["QuantMixtralForCausalLM"]
-
+    # todo 模型是否为vllm支持【是否注册到vllm中】
     vllm_supported_archs = ModelRegistry.get_supported_archs()
     is_vllm_supported = any(arch in vllm_supported_archs
                             for arch in architectures)
+    # todo 加载模型时，如果vllm不支持，或者model_impl为transformers，则通过transformers加载
     if (not is_vllm_supported
             or model_config.model_impl == ModelImpl.TRANSFORMERS):
+        # todo 回退到transformer加载！！！！！！！
         architectures = resolve_transformers_fallback(model_config,
                                                       architectures)
-    # todo
+    # todo 获取模型类和arch
     model_cls, arch = ModelRegistry.resolve_model_cls(architectures)
     if model_config.task == "embed":
         model_cls = as_embedding_model(model_cls)
@@ -114,6 +123,8 @@ def get_model_architecture(
         model_cls = as_classification_model(model_cls)
     elif model_config.task == "reward":
         model_cls = as_reward_model(model_cls)
+    # elif model_config.task == "score":
+    #     model_cls = as_score_model(model_cls)
 
     return model_cls, arch
 

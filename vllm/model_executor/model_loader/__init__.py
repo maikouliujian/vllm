@@ -11,7 +11,7 @@ from vllm.model_executor.model_loader.utils import (
 # todo 不同的类加载器加载不同的模型
 def get_model(*, vllm_config: VllmConfig) -> nn.Module:
     loader = get_model_loader(vllm_config.load_config)
-    # todo 加载模型
+    # todo 加载模型 DefaultModelLoader
     return loader.load_model(vllm_config=vllm_config)
 
 

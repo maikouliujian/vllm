@@ -44,16 +44,19 @@ def with_cancellation(handler_func):
     async def wrapper(*args, **kwargs):
 
         # The request is either the second positional arg or `raw_request`
+        # todo
         request = args[1] if len(args) > 1 else kwargs["raw_request"]
-
+        # todo handler_task：执行真正的业务逻辑（如do_rerank_v1）
         handler_task = asyncio.create_task(handler_func(*args, **kwargs))
+        # todo cancellation_task：监听客户端是否断开连接（listen_for_disconnect）。
         cancellation_task = asyncio.create_task(listen_for_disconnect(request))
 
         done, pending = await asyncio.wait([handler_task, cancellation_task],
                                            return_when=asyncio.FIRST_COMPLETED)
+        # todo 如果取消task先返回，则取消task
         for task in pending:
             task.cancel()
-
+        # todo 如果处理task先返回，则返回结果
         if handler_task in done:
             return handler_task.result()
         return None

@@ -427,7 +427,7 @@ class DefaultModelLoader(BaseModelLoader):
                 model = _initialize_model(vllm_config=vllm_config)
 
             weights_to_load = {name for name, _ in model.named_parameters()}
-            # todo 加载获取权重
+            # todo 加载获取权重！！！！！！
             loaded_weights = model.load_weights(
                 self._get_all_weights(model_config, model))
             self.counter_after_loading_weights = time.perf_counter()
@@ -437,6 +437,7 @@ class DefaultModelLoader(BaseModelLoader):
                 self.counter_before_loading_weights)
             # We only enable strict check for non-quantized models
             # that have loaded weights tracking currently.
+            # todo 权重校验！！！！！！
             if model_config.quantization is None and loaded_weights is not None:
                 weights_not_loaded = weights_to_load - loaded_weights
                 if weights_not_loaded:
@@ -1488,5 +1489,5 @@ def get_model_loader(load_config: LoadConfig) -> BaseModelLoader:
 
     if load_config.load_format == LoadFormat.RUNAI_STREAMER:
         return RunaiModelStreamerLoader(load_config)
-    # todo
+    # todo 走到这里
     return DefaultModelLoader(load_config)

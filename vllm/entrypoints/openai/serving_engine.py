@@ -136,6 +136,7 @@ class OpenAIServing:
                 for prompt_adapter in self.models.prompt_adapter_requests
         ]:
             return None
+        # todo The model `mxbai-rerank-large-v2` does not exist
         return self.create_error_response(
             message=f"The model `{request.model}` does not exist.",
             err_type="NotFoundError",

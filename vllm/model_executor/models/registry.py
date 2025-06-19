@@ -147,7 +147,7 @@ _EMBEDDING_MODELS = {
     # models for the time being.
     "PrithviGeoSpatialMAE": ("prithvi_geospatial_mae", "PrithviGeoSpatialMAE"),
 }
-
+# todo model_arch, (mod_relname【mod_relname.py 模型文件】, cls_name)
 _CROSS_ENCODER_MODELS = {
     "BertForSequenceClassification": ("bert", "BertForSequenceClassification"),
     "RobertaForSequenceClassification": ("roberta",
@@ -299,7 +299,7 @@ class _LazyRegisteredModel(_BaseRegisteredModel):
     def inspect_model_cls(self) -> _ModelInfo:
         return _run_in_subprocess(
             lambda: _ModelInfo.from_model_cls(self.load_model_cls()))
-
+    # todo 加载模型
     def load_model_cls(self) -> Type[nn.Module]:
         mod = importlib.import_module(self.module_name)
         return getattr(mod, self.class_name)
@@ -311,6 +311,7 @@ def _try_load_model_cls(
     model: _BaseRegisteredModel,
 ) -> Optional[Type[nn.Module]]:
     from vllm.platforms import current_platform
+    # todo 会使用到vllm插件
     current_platform.verify_model_arch(model_arch)
     try:
         # todo 加载
@@ -337,7 +338,7 @@ def _try_inspect_model_cls(
 @dataclass
 class _ModelRegistry:
     # Keyed by model_arch
-    # todo 模型注册容器
+    # todo 模型注册容器 <model_arch, _BaseRegisteredModel>
     models: Dict[str, _BaseRegisteredModel] = field(default_factory=dict)
 
     def get_supported_archs(self) -> AbstractSet[str]:
@@ -362,7 +363,9 @@ class _ModelRegistry:
         if not isinstance(model_arch, str):
             msg = f"`model_arch` should be a string, not a {type(model_arch)}"
             raise TypeError(msg)
-
+        # todo 如果vllm和xvllm中注册了相同的模型，那么注册顺序是先vllm再xvllm，xvllm中的模型会覆盖vllm中的模型
+        # todo 如：WARNING 06-16 21:12:57 [registry.py:366] Model architecture Qwen2VLForConditionalGeneration is already registered, and will be overwritten
+        #  by the new model class vllm_xpu.models.qwen2_vl:KunlunQwen2VLForConditionalGeneration.
         if model_arch in self.models:
             logger.warning(
                 "Model architecture %s is already registered, and will be "
@@ -383,7 +386,7 @@ class _ModelRegistry:
             msg = ("`model_cls` should be a string or PyTorch model class, "
                    f"not a {type(model_arch)}")
             raise TypeError(msg)
-
+        # todo 将模型注册到容器中
         self.models[model_arch] = model
 
     def _raise_for_unsupported(self, architectures: List[str]):
@@ -398,6 +401,7 @@ class _ModelRegistry:
             f"Model architectures {architectures} are not supported for now. "
             f"Supported architectures: {all_supported_archs}")
 
+    # todo 获取模型类
     def _try_load_model_cls(self,
                             model_arch: str) -> Optional[Type[nn.Module]]:
         if model_arch not in self.models:

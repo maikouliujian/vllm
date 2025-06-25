@@ -104,6 +104,7 @@ def make_arg_parser(parser: FlexibleArgumentParser) -> FlexibleArgumentParser:
                         type=json.loads,
                         default=["*"],
                         help="Allowed headers.")
+    # todo 启动服务时设置key，那么所有的客户端请求时都需要带上key进行校验
     parser.add_argument("--api-key",
                         type=nullable_str,
                         default=None,

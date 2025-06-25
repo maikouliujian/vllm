@@ -833,7 +833,7 @@ def build_app(args: Namespace) -> FastAPI:
                             code=HTTPStatus.BAD_REQUEST)
         return JSONResponse(err.model_dump(),
                             status_code=HTTPStatus.BAD_REQUEST)
-
+    # todo key的校验【apikey当作token的使用，1、通过环境变量设置envs.VLLM_API_KEY ，2、启动服务时参数中携带args.api_key】
     if token := envs.VLLM_API_KEY or args.api_key:
 
         @app.middleware("http")
@@ -845,6 +845,7 @@ def build_app(args: Namespace) -> FastAPI:
                 url_path = url_path[len(app.root_path):]
             if not url_path.startswith("/v1"):
                 return await call_next(request)
+            # todo 客户端请求时携带api key进行鉴权
             if request.headers.get("Authorization") != "Bearer " + token:
                 return JSONResponse(content={"error": "Unauthorized"},
                                     status_code=401)

@@ -321,6 +321,7 @@ class EngineArgs:
                             help='Directory to download and load the weights, '
                             'default to the default cache dir of '
                             'huggingface.')
+
         parser.add_argument(
             '--load-format',
             type=str,
@@ -601,6 +602,7 @@ class EngineArgs:
                             help='RoPE theta. Use with `rope_scaling`. In '
                             'some cases, changing the RoPE theta improves the '
                             'performance of the scaled model.')
+        # todo 用来替换hf的配置
         parser.add_argument('--hf-overrides',
                             type=json.loads,
                             default=EngineArgs.hf_overrides,

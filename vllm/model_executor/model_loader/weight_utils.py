@@ -418,7 +418,7 @@ def np_cache_weights_iterator(
             param = np.load(f)
         yield name, torch.from_numpy(param)
 
-
+# todo 加载safetensors权重
 def safetensors_weights_iterator(
     hf_weights_files: List[str],
     use_tqdm_on_load: bool,
@@ -426,6 +426,7 @@ def safetensors_weights_iterator(
     """Iterate over the weights in the model safetensor files."""
     for st_file in tqdm(
             hf_weights_files,
+            # todo 加载权重提示
             desc="Loading safetensors checkpoint shards",
             disable=not enable_tqdm(use_tqdm_on_load),
             bar_format=_BAR_FORMAT,
@@ -536,7 +537,7 @@ def default_weight_loader(param: torch.Tensor,
             assert param.size() == loaded_weight.size(), (
                 f"Attempted to load weight ({loaded_weight.size()}) "
                 f"into parameter ({param.size()})")
-
+            # todo 将loaded_weight填充到参数param
             param.data.copy_(loaded_weight)
     except Exception:
         # NOTE: This exception is added for the purpose of setting breakpoint to

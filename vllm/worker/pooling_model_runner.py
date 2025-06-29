@@ -108,6 +108,7 @@ class PoolingModelRunner(
 
         with set_forward_context(model_input.attn_metadata, self.vllm_config,
                                  virtual_engine):
+            # todo 调用模型的forward方法
             hidden_or_intermediate_states = model_executable(
                 input_ids=model_input.input_tokens,
                 positions=model_input.input_positions,
@@ -145,6 +146,7 @@ class PoolingModelRunner(
             return []
 
         return [
+            # todo 执行模型的pooler方法
             self.model.pooler(hidden_states=hidden_or_intermediate_states,
                               pooling_metadata=model_input.pooling_metadata)
         ]

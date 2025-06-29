@@ -120,7 +120,7 @@ class OpenAIServing:
                                        status_code=status_code).model_dump()
         })
         return json_str
-
+    # todo 检查模型是否存在
     async def _check_model(
         self,
         request: AnyRequest,

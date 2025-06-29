@@ -96,6 +96,7 @@ class OpenAIServingModels:
                 raise ValueError(load_result.message)
 
     def is_base_model(self, model_name) -> bool:
+        # todo self.base_model_paths======== [BaseModelPath(name='/workspace/models/bge-m3', model_path='/workspace/models/bge-m3')]
         return any(model.name == model_name for model in self.base_model_paths)
 
     def model_name(self, lora_request: Optional[LoRARequest] = None) -> str:

@@ -69,7 +69,7 @@ _ResolvedTask = Literal["generate", "embed", "classify", "score", "reward",
                         "draft", "transcription"]
 
 RunnerType = Literal["generate", "pooling", "draft", "transcription"]
-
+# todo _RUNNER_TASKS
 _RUNNER_TASKS: dict[RunnerType, list[_ResolvedTask]] = {
     "generate": ["generate"],
     "pooling": ["embed", "classify", "score", "reward"],
@@ -1274,6 +1274,7 @@ class TokenizerPoolConfig:
 
 
 class LoadFormat(str, enum.Enum):
+
     AUTO = "auto"
     PT = "pt"
     SAFETENSORS = "safetensors"
@@ -2601,6 +2602,7 @@ def _get_and_verify_dtype(
             pass
         elif config_dtype == torch.float32:
             # Downcasting from float32 to float16 or bfloat16 is allowed.
+            # todo ！！！！！！
             logger.info("Downcasting %s to %s.", config_dtype, torch_dtype)
             pass
         else:

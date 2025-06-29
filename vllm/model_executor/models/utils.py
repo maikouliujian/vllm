@@ -155,7 +155,7 @@ class AutoWeightsLoader:
                          param.shape)
 
             yield weight_qualname
-
+    # todo 递归加载
     def _load_module(
         self,
         base_prefix: str,
@@ -180,12 +180,18 @@ class AutoWeightsLoader:
                         lambda x: self._get_qualname(base_prefix, x),
                         loaded_params,
                     )
-
+        # todo child_modules【返回第一层子模块】
         child_modules = dict(module.named_children())
+        print("child_modules------------", child_modules)
+        # todo child_params
         child_params = dict(module.named_parameters(recurse=False))
+        print("child_params------------", child_params)
+        print("weights------------", weights)
 
         for child_prefix, child_weights in self._groupby_prefix(weights):
+            print("child_prefix----------", child_prefix)
             prefix = self._get_qualname(base_prefix, child_prefix)
+            print("prefix----------", prefix)
 
             if child_prefix in child_modules:
                 if self._can_skip(prefix + "."):
@@ -218,11 +224,11 @@ class AutoWeightsLoader:
                     logger.debug("Ignoring missing %s", prefix)
 
                     continue
-
+                # todo There is no module or parameter named 'embed_tokens' in MiniCPMForSequenceClassification
                 msg = (f"There is no module or parameter named '{prefix}' "
                        f"in {type(self.module).__name__}")
                 raise ValueError(msg)
-
+    # todo 加载权重
     def load_weights(
         self,
         weights: Iterable[Tuple[str, torch.Tensor]],

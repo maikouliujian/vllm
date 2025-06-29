@@ -265,6 +265,7 @@ class ServingScores(OpenAIServing):
         _validate_score_input_lens(texts_1, texts_2)
 
         if self.model_config.is_cross_encoder:
+            # todo 走这里！！！！！！
             return await self._cross_encoding_score(
                 tokenizer=tokenizer,
                 texts_1=texts_1,
@@ -432,7 +433,7 @@ class ServingScores(OpenAIServing):
             num_prompt_tokens += len(prompt_token_ids)
 
         # sort by relevance, then return the top n if set
-        # todo 排序返回
+        # todo 倒排序返回
         results.sort(key=lambda x: x.relevance_score, reverse=True)
         if top_n < len(documents):
             results = results[:top_n]

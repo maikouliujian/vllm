@@ -125,7 +125,8 @@ class TransformersModel(nn.Module, SupportsQuant, SupportsLoRA):
         # todo 加载模型
         self.model: PreTrainedModel = AutoModel.from_config(
             self.config,
-            attn_implementation="vllm",
+            # todo 这里
+            attn_implementation="vllm" if not self.config._attn_implementation else self.config._attn_implementation,
             torch_dtype=vllm_config.model_config.dtype,
             trust_remote_code=vllm_config.model_config.trust_remote_code,
         )

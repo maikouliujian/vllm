@@ -50,6 +50,7 @@ class MultiprocExecutor(Executor):
                 "shutting down. See stack trace above for root cause issue.")
             # Propagate error up to parent process.
             parent_process = psutil.Process().parent()
+            # todo
             parent_process.send_signal(signal.SIGUSR1)
             self.shutdown()
 

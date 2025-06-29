@@ -113,7 +113,7 @@ def _initialize_model(
 ) -> nn.Module:
     """Initialize a model with the given configurations."""
     model_config = vllm_config.model_config
-    # todo 获取模型结构
+    # todo 获取模型结构【核心方法！！！！！！】
     model_class, _ = get_model_architecture(model_config)
 
     if vllm_config.quant_config is not None:
@@ -341,7 +341,7 @@ class DefaultModelLoader(BaseModelLoader):
                 f"Cannot find any model weights with `{model_name_or_path}`")
 
         return hf_folder, hf_weights_files, use_safetensors
-
+    # todo 获取权重的key,value,并给key添加prefix
     def _get_weights_iterator(
             self, source: "Source"
     ) -> Generator[Tuple[str, torch.Tensor], None, None]:
@@ -360,6 +360,7 @@ class DefaultModelLoader(BaseModelLoader):
                 self.load_config.use_tqdm_on_load,
             )
         elif use_safetensors:
+            # todo 加载safetensors！！！！！！
             weights_iterator = safetensors_weights_iterator(
                 hf_weights_files,
                 self.load_config.use_tqdm_on_load,
@@ -385,6 +386,7 @@ class DefaultModelLoader(BaseModelLoader):
         if self.counter_before_loading_weights == 0.0:
             self.counter_before_loading_weights = time.perf_counter()
         # Apply the prefix.
+        # todo 给权重的key添加prefix
         return ((source.prefix + name, tensor)
                 for (name, tensor) in weights_iterator)
 
@@ -423,12 +425,13 @@ class DefaultModelLoader(BaseModelLoader):
         target_device = torch.device(device_config.device)
         with set_default_torch_dtype(model_config.dtype):
             with target_device:
-                # todo 初始化模型
+                # todo 初始化模型【核心 方法】
                 model = _initialize_model(vllm_config=vllm_config)
 
             weights_to_load = {name for name, _ in model.named_parameters()}
-            # todo 加载获取权重！！！！！！
+            # todo 将hf原始权重转化为vllm格式，并填充给vllm模型！！！！！！
             loaded_weights = model.load_weights(
+                # todo 加载hf原始权重！！！！！！
                 self._get_all_weights(model_config, model))
             self.counter_after_loading_weights = time.perf_counter()
             logger.info(
@@ -1109,6 +1112,7 @@ class BitsAndBytesModelLoader(BaseModelLoader):
                 f"Model {type(model).__name__} does not support BitsAndBytes "
                 "quantization yet. No 'packed_modules_mapping' found.")
 
+        # todo packed_modules_mapping使用的地方！！！！！！
         self.modules_mapping = ParamMapping(
             copy.deepcopy(model.packed_modules_mapping))
 

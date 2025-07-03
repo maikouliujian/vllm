@@ -31,12 +31,12 @@ from transformers import PretrainedConfig
 
 from vllm.attention import Attention
 from vllm.compilation.decorators import support_torch_compile
-from vllm.config import CacheConfig, VllmConfig
+from vllm.config import CacheConfig, VllmConfig, PoolerConfig
 from vllm.distributed import (get_pp_group, get_tensor_model_parallel_rank,
                               get_tensor_model_parallel_world_size,
                               tensor_model_parallel_all_reduce)
 from vllm.model_executor.layers.activation import FatreluAndMul, SiluAndMul
-from vllm.model_executor.layers.fused_moe import fused_moe
+# from vllm.model_executor.layers.fused_moe import fused_moe
 from vllm.model_executor.layers.layernorm import RMSNorm
 from vllm.model_executor.layers.linear import (MergedColumnParallelLinear,
                                                QKVParallelLinear,
@@ -57,7 +57,13 @@ from vllm.sequence import IntermediateTensors
 from .interfaces import SupportsLoRA, SupportsPP
 from .utils import (AutoWeightsLoader, is_pp_missing_parameter,
                     make_empty_intermediate_tensors_factory, make_layers,
-                    maybe_prefix)
+                    maybe_prefix, WeightsMapper)
+# from .adapters import as_seq_cls_model
+from vllm.model_executor.pooling_metadata import PoolingMetadata
+from vllm.model_executor.layers.pooler import Pooler, PoolingType
+from vllm.sequence import IntermediateTensors, PoolerOutput
+from .interfaces import SupportsCrossEncoding, SupportsV0Only
+from vllm.model_executor.layers.pooler import CrossEncodingPooler
 
 
 class MiniCPMMoE(nn.Module):
@@ -134,6 +140,7 @@ class MiniCPMMoE(nn.Module):
         hidden_states = hidden_states.view(-1, self.hidden_size)
         # router_logits: (num_tokens, n_experts)
         router_logits, _ = self.gate(hidden_states)
+        from vllm.model_executor.layers.fused_moe import fused_moe
         final_hidden_states = fused_moe(hidden_states,
                                         self.ws,
                                         self.w2s,
@@ -449,6 +456,8 @@ class MiniCPMModel(nn.Module):
         params_dict = dict(self.named_parameters())
         loaded_params: Set[str] = set()
         for name, loaded_weight in weights:
+            if "score.weight" in name:
+                continue
             if "rotary_emb.inv_freq" in name:
                 continue
             if ("rotary_emb.cos_cached" in name
@@ -556,12 +565,27 @@ class MiniCPMForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         self.sampler = get_sampler()
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
+        pooler_config = vllm_config.model_config.pooler_config
+        self._pooler = self._build_pooler(pooler_config)
+
+    def _build_pooler(self, pooler_config: PoolerConfig) -> Pooler:
+        return Pooler.from_config_with_defaults(pooler_config,
+                                                pooling_type=PoolingType.CLS,
+                                                normalize=True,
+                                                softmax=False)
 
     def _init_model(self, *, vllm_config: VllmConfig, prefix: str = ""):
         return MiniCPMModel(vllm_config=vllm_config, prefix=prefix)
 
     def get_input_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
         return self.model.get_input_embeddings(input_ids)
+
+    def pooler(
+        self,
+        hidden_states: torch.Tensor,
+        pooling_metadata: PoolingMetadata,
+    ) -> Optional[PoolerOutput]:
+        return self._pooler(hidden_states, pooling_metadata)
 
     def forward(
         self,
@@ -600,3 +624,123 @@ class MiniCPMForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
                            if self.config.tie_word_embeddings else None),
         )
         return loader.load_weights(weights)
+
+
+class MiniCPMEmbeddingModel(nn.Module, SupportsV0Only):
+    """A model that uses Bert to provide embedding functionalities.
+
+   This class encapsulates the BertModel and provides an interface for
+   embedding operations and customized pooling functions.
+
+   Attributes:
+       model: An instance of BertModel used for forward operations.
+       _pooler: An instance of Pooler used for pooling operations.
+   """
+    hf_to_vllm_mapper = WeightsMapper(orig_to_new_prefix={"model.": ""})
+
+    def __init__(self, *, vllm_config: VllmConfig, prefix: str = ""):
+        super().__init__()
+        pooler_config = vllm_config.model_config.pooler_config
+        self.model = self._build_model(vllm_config=vllm_config,
+                                       prefix=maybe_prefix(prefix, "model"))
+        self._pooler = self._build_pooler(pooler_config)
+
+    def forward(
+        self,
+        input_ids: Optional[torch.Tensor],
+        positions: torch.Tensor,
+        intermediate_tensors: Optional[IntermediateTensors] = None,
+        inputs_embeds: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        ret = self.model(input_ids=input_ids,
+                          positions=positions,
+                          inputs_embeds=inputs_embeds,
+                          intermediate_tensors=intermediate_tensors)
+        return ret
+
+    def pooler(
+        self,
+        hidden_states: torch.Tensor,
+        pooling_metadata: PoolingMetadata,
+    ) -> Optional[PoolerOutput]:
+        return self._pooler(hidden_states, pooling_metadata)
+
+
+    def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
+        weights = self.hf_to_vllm_mapper.apply(weights)
+        weights = ((name, data) for name, data in weights
+                   if not name.startswith("lm_head."))
+        self.model.load_weights(weights)
+
+    def _build_model(self,
+                     vllm_config: VllmConfig,
+                     prefix: str = "") -> MiniCPMModel:
+        return MiniCPMModel(vllm_config=vllm_config,
+                         prefix=prefix)
+
+    def _build_pooler(self, pooler_config: PoolerConfig) -> Pooler:
+        return Pooler.from_config_with_defaults(pooler_config,
+                                                pooling_type=PoolingType.CLS,
+                                                normalize=True,
+                                                softmax=False)
+
+
+class MiniCPMForSequenceClassification(nn.Module, SupportsCrossEncoding, SupportsV0Only):
+    hf_to_vllm_mapper = WeightsMapper(orig_to_new_prefix={"model.": ""})
+
+    def __init__(self, *, vllm_config: VllmConfig, prefix: str = ""):
+        super().__init__()
+        self.config = vllm_config.model_config.hf_config
+        num_labels: int = self.config.num_labels
+        score_bias: bool = getattr(self.config, 'score_bias', False)
+        self.model = self._build_model(vllm_config=vllm_config,
+                                       prefix=maybe_prefix(prefix, "model"))
+        self.score = nn.Linear(self.config.hidden_size, num_labels, bias=score_bias)
+        # self._pooler = CrossEncodingPooler(self.config, self.score)
+        pooler_config = vllm_config.model_config.pooler_config
+        self._pooler = Pooler.from_config_with_defaults(pooler_config,
+                                                pooling_type=PoolingType.LAST,
+                                                normalize=False,
+                                                softmax=True)
+
+    def forward(
+        self,
+        input_ids: Optional[torch.Tensor],
+        positions: torch.Tensor,
+        intermediate_tensors: Optional[IntermediateTensors] = None,
+        inputs_embeds: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        ret = self.model(input_ids=input_ids,
+                          positions=positions,
+                          inputs_embeds=inputs_embeds,
+                          intermediate_tensors=intermediate_tensors)
+        return ret
+
+    def _build_model(self,
+                     vllm_config: VllmConfig,
+                     prefix: str = "") -> MiniCPMModel:
+        return MiniCPMModel(vllm_config=vllm_config,
+                         prefix=prefix)
+    def pooler(
+        self,
+        hidden_states: torch.Tensor,
+        pooling_metadata: PoolingMetadata,
+    ) -> Optional[PoolerOutput]:
+        print("vllm==========" ,hidden_states)
+        print("vllm==s========" ,hidden_states.shape)
+        logits = self.score(hidden_states)
+        print("vllm====logits======", logits)
+        print("vllm==s====logits====", logits.shape)
+        return self._pooler(logits, pooling_metadata)
+
+    def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
+        weights = self.hf_to_vllm_mapper.apply(weights)
+        weights = ((name, data) for name, data in weights
+                   if not name.startswith("lm_head."))
+        import itertools
+        weights1, weights2 = itertools.tee(weights, 2)
+        for name, loaded_weight in weights1:
+            if "score.weight" in name:
+                self.score.weight.data.copy_(loaded_weight)
+                break
+        self.model.load_weights(weights2)

@@ -92,6 +92,7 @@ def get_attn_backend(
     # value to be returned from the cache if the value changes between calls.
     # To avoid this, we read envs.VLLM_USE_V1 here and pass it explicitly to the
     # private function.
+    # todo
     return _cached_get_attn_backend(
         head_size=head_size,
         dtype=dtype,
@@ -145,6 +146,7 @@ def _cached_get_attn_backend(
             selected_backend = backend_name_to_enum(backend_by_env_var)
 
     # get device-specific attn_backend
+    # todo 根据current_platform获取attention后端！！！！！！！
     attention_cls = current_platform.get_attn_backend_cls(
         selected_backend, head_size, dtype, kv_cache_dtype, block_size, use_v1,
         use_mla)

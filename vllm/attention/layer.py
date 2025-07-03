@@ -116,6 +116,8 @@ class Attention(nn.Module):
         # During model initialization, the default dtype is set as the model
         # weight and activation dtype.
         dtype = torch.get_default_dtype()
+        # todo 获取真正的attention后端！！！！！！！
+        # todo 如：vllm_xxxx.attention.backends.xxxx_mla.xxxx_MLAAttentionBackend
         attn_backend = get_attn_backend(head_size,
                                         dtype,
                                         kv_cache_dtype,
@@ -123,7 +125,9 @@ class Attention(nn.Module):
                                         is_attention_free,
                                         blocksparse_params is not None,
                                         use_mla=use_mla)
+        # todo 获取具体的实现类
         impl_cls = attn_backend.get_impl_cls()
+        # todo 初始化attention实现类
         self.impl = impl_cls(num_heads, head_size, scale, num_kv_heads,
                              alibi_slopes, sliding_window, kv_cache_dtype,
                              blocksparse_params, logits_soft_cap, attn_type,
@@ -219,7 +223,7 @@ class Attention(nn.Module):
                 forward_context = get_forward_context()
                 attn_metadata = forward_context.attn_metadata
                 self_kv_cache = self.kv_cache[forward_context.virtual_engine]
-                # todo 走到这里！！！！！！！
+                # todo 真正调用attention逻辑，走到这里！！！！！！！
                 return self.impl.forward(self, query, key, value,
                                          self_kv_cache, attn_metadata)
             else:

@@ -227,6 +227,7 @@ class Attention(nn.Module):
                 return self.impl.forward(self, query, key, value,
                                          self_kv_cache, attn_metadata)
             else:
+                # todo 我们自己的逻辑，走到这里！！！！！！！，走到327行
                 return torch.ops.vllm.unified_attention(
                     query, key, value, self.layer_name)
 
@@ -333,6 +334,7 @@ def unified_attention(
     attn_metadata = forward_context.attn_metadata
     self = forward_context.no_compile_layers[layer_name]
     kv_cache = self.kv_cache[forward_context.virtual_engine]
+    # todo 走到这里！！！！！！！
     return self.impl.forward(self, query, key, value, kv_cache, attn_metadata)
 
 

@@ -1426,6 +1426,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
             raise RuntimeError("PromptAdapter is not enabled.")
         return self.prompt_adapter_manager.list_adapters()
 
+    # todo Cuda graph capture a model
     @torch.inference_mode()
     def capture_model(self, kv_caches: List[List[torch.Tensor]]) -> None:
         """Cuda graph capture a model.
@@ -1517,11 +1518,12 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
                         )
                         self.set_active_prompt_adapters(
                             set(), prompt_adapter_mapping)
+                    # todo 初始化图运行器
                     graph_runner = CUDAGraphRunner(
                         self.model, self.attn_backend.get_name(),
                         self.attn_state.graph_clone(batch_size),
                         self.model_config.is_encoder_decoder)
-
+                    # todo 构建捕获输入字典
                     capture_inputs = {
                         "input_ids":
                         input_tokens[:batch_size],
@@ -1556,11 +1558,13 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
                         # encoder-decoder models.
                         self._update_inputs_to_capture_for_enc_dec_model(
                             capture_inputs)
-
+                    # todo 执行图捕获
                     with set_forward_context(attn_metadata, self.vllm_config,
                                              virtual_engine):
+                        # todo 执行图捕获
                         graph_runner.capture(**capture_inputs)
                     self.graph_memory_pool = graph_runner.graph.pool()
+                    # todo 保存图运行器实例
                     self.graph_runners[virtual_engine][batch_size] = (
                         graph_runner)
 
@@ -1691,6 +1695,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         if prefill_meta is None and decode_meta.use_cuda_graph:
             assert model_input.input_tokens is not None
             graph_batch_size = model_input.input_tokens.shape[0]
+            # todo 使用之前保存的cuda graph！！！！！！
             model_executable = self.graph_runners[virtual_engine][
                 graph_batch_size]
             if previous_hidden_states is not None:

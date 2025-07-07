@@ -477,6 +477,7 @@ class ScoringOutput:
     def from_base(pooling_output: PoolingOutput):
         pooled_data = pooling_output.data
         if pooled_data.ndim != 0:
+            # todo 异常
             raise ValueError("pooled_data should be a scalar score")
 
         return ScoringOutput(pooled_data.item())

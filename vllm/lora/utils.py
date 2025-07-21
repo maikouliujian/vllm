@@ -36,7 +36,7 @@ from vllm.model_executor.layers.vocab_parallel_embedding import ParallelLMHead
 from vllm.model_executor.models.utils import WeightsMapper
 
 logger = init_logger(__name__)
-
+# todo 所有的lora类
 _all_lora_classes: Set[Type[BaseLayerWithLoRA]] = {
     VocabParallelEmbeddingWithLoRA,
     ColumnParallelLinearWithLoRA,
@@ -67,6 +67,7 @@ def from_layer(layer: nn.Module,
                                       packed_modules_list=packed_modules_list,
                                       model_config=model_config):
             instance_layer = lora_cls(layer)
+            # todo lora权重
             instance_layer.create_lora_weights(max_loras, lora_config,
                                                model_config)
             return instance_layer
@@ -171,7 +172,7 @@ def is_regex_target_modules(load_modules: Union[str, List[str]],
             return is_subset(suffix, expected_lora_modules)
     return False
 
-
+# todo 所有的linear和embedding都支持lora
 def get_supported_lora_modules(model: nn.Module) -> List[str]:
     """
     In vLLM, all linear layers support LoRA.
@@ -181,7 +182,7 @@ def get_supported_lora_modules(model: nn.Module) -> List[str]:
     for name, module in model.named_modules():
         if isinstance(module, (LinearBase, )):
             supported_lora_modules.add(name.split(".")[-1])
-    # step 2: get the embedding modules if the model's mbedding_modules
+    # step 2: get the embedding modules if the model's embedding_modules
     # is not empty.
     if model.embedding_modules:
         for name in model.embedding_modules:
@@ -220,6 +221,7 @@ def get_adapter_absolute_path(lora_path: str) -> str:
 
     # If the path does not exist locally, assume it's a Hugging Face repo.
     try:
+        # todo 从hf上下载！！！！！！
         local_snapshot_path = huggingface_hub.snapshot_download(
             repo_id=lora_path)
     except (HfHubHTTPError, RepositoryNotFoundError, EntryNotFoundError,

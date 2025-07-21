@@ -458,10 +458,10 @@ class Worker(LocalOrDistributedWorkerBase):
         output = super()._execute_model_spmd(execute_model_req,
                                              intermediate_tensors)
         return output
-
+    # todo 热加载lora
     def add_lora(self, lora_request: LoRARequest) -> bool:
         return self.model_runner.add_lora(lora_request)
-
+    # todo 热卸载lora
     def remove_lora(self, lora_id: int) -> bool:
         return self.model_runner.remove_lora(lora_id)
 

@@ -81,7 +81,7 @@ class WorkerLoRAManager(AbstractWorkerManager):
         )
         self._adapter_manager = lora_manager
         return lora_manager.model
-
+    # todo 加载lora适配器
     def _load_adapter(self, lora_request: LoRARequest) -> LoRAModel:
         try:
             supported_lora_modules = (
@@ -97,8 +97,10 @@ class WorkerLoRAManager(AbstractWorkerManager):
                     expected_lora_modules.append(module)
 
             expected_lora_modules = list(set(expected_lora_modules))
+            # todo lora模型的路径
             lora_path = get_adapter_absolute_path(lora_request.lora_path)
-
+            # todo 读取lora模型的配置：adapter_config.json
+            # todo PEFT:Parameter-Efficient Fine-Tuning
             peft_helper = PEFTHelper.from_local_dir(
                 lora_path, self.max_position_embeddings)
 
@@ -113,7 +115,7 @@ class WorkerLoRAManager(AbstractWorkerManager):
             if (hasattr(model, "hf_to_vllm_mapper")
                     and model.hf_to_vllm_mapper is not None):
                 hf_to_vllm_mapper = model.hf_to_vllm_mapper
-
+            # todo 返回lora模型，并加载lora权重
             lora = self._lora_model_cls.from_local_checkpoint(
                 lora_path,
                 expected_lora_modules,
@@ -164,9 +166,10 @@ class WorkerLoRAManager(AbstractWorkerManager):
 
     def set_active_adapters(self, requests: Set[Any],
                             mapping: Optional[Any]) -> None:
+        # todo 激活lora 适配器
         set_active_adapters_worker(requests, mapping, self._apply_adapters,
                                    self._adapter_manager.set_adapter_mapping)
-
+    # todo 添加适配起
     def _apply_adapters(self, adapter_requests: Set[Any]) -> None:
         apply_adapters_worker(adapter_requests, self.list_adapters,
                               self._adapter_manager.adapter_slots,
@@ -210,6 +213,7 @@ class LRUCacheWorkerLoRAManager(WorkerLoRAManager):
             device=self.device,
             max_num_batched_tokens=self.max_num_batched_tokens,
         )
+        # todo 初始化lora manager：LRUCacheLoRAModelManager
         self._adapter_manager = lora_manager
         return lora_manager.model
 
@@ -225,13 +229,14 @@ class LRUCacheWorkerLoRAManager(WorkerLoRAManager):
                 f"({self._adapter_manager.lora_slots}).")
         for lora in loras_map.values():
             self.add_adapter(lora)
-
+    # todo 添加lora适配器
     def add_adapter(self, lora_request: LoRARequest) -> bool:
         if lora_request.lora_int_id not in self.list_adapters():
             # Load the new adapter first to ensure it is actually valid, before
             # evicting any existing adapters.
             # This may cause the # of loaded lora adapters to very temporarily
             # exceed `--max-cpu-loras`.
+            # todo 第一次需要加载lora适配器
             lora = self._load_adapter(lora_request)
 
             # Loading succeeded, now check if we will exceed cache capacity and
@@ -241,11 +246,13 @@ class LRUCacheWorkerLoRAManager(WorkerLoRAManager):
                                   LRUCacheLoRAModelManager)
                 self._adapter_manager.remove_oldest_adapter()
             # Then add the new adapter to the cache
+            # todo 注册lora模型
             loaded = self._adapter_manager.add_adapter(lora)
         else:
             # If the lora is already loaded, just touch it to
             # update its position in the caches
             loaded = self._adapter_manager.get_adapter(
                 lora_request.lora_int_id) is not None
+        # todo 激活lora模型！！！！！！
         self._adapter_manager.activate_adapter(lora_request.lora_int_id)
         return loaded

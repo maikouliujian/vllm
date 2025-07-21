@@ -35,7 +35,7 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
         # todo # 获取并行配置信息
         world_size = parallel_config.world_size
         tensor_parallel_size = parallel_config.tensor_parallel_size
-
+        # todo 从CUDA_VISIBLE_DEVICES读取
         cuda_device_count = cuda_device_count_stateless()
         # Use confusing message for more common TP-only case.
         if tensor_parallel_size > cuda_device_count:

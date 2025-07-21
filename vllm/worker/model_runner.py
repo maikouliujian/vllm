@@ -928,7 +928,9 @@ class ModelInputForGPUBuilder(ModelRunnerInputBuilderBase[ModelInputForGPU]):
         # LoRA data.
         lora_requests = set()
         lora_mapping = None
+        # todo 如果开启lora
         if self.enable_lora:
+            # todo lora_requests
             lora_requests = set(r for data in self.inter_data_list
                                 for r in data.lora_requests)
             lora_index_mapping = flatten_2d_lists([
@@ -1084,6 +1086,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         # Lazy initialization
         self.model: nn.Module  # Set after load_model
         # Set after load_model.
+        # todo 设置lora manager
         self.lora_manager: Optional[LRUCacheWorkerLoRAManager] = None
         self.prompt_adapter_manager: LRUCacheWorkerPromptAdapterManager = None
 
@@ -1130,7 +1133,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
                 else:
                     max_pos_embeddings = (
                         self.model.config.text_config.max_position_embeddings)
-
+                # todo 创建lora manager：LRUCacheWorkerLoRAManager
                 self.lora_manager = LRUCacheWorkerLoRAManager(
                     self.scheduler_config.max_num_seqs,
                     self.scheduler_config.max_num_batched_tokens,
@@ -1141,6 +1144,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
                     self.model.embedding_padding_modules,
                     max_position_embeddings=max_pos_embeddings,
                 )
+                # todo 初始化lora manager
                 self.model = self.lora_manager.create_lora_manager(self.model)
             time_after_load = time.perf_counter()
 
@@ -1371,12 +1375,13 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         if not self.lora_manager:
             raise RuntimeError("LoRA is not enabled.")
         self.lora_manager.set_active_adapters(lora_requests, lora_mapping)
-
+    # todo 热加载lora
     def add_lora(self, lora_request: LoRARequest) -> bool:
         if not self.lora_manager:
             raise RuntimeError("LoRA is not enabled.")
         return self.lora_manager.add_adapter(lora_request)
 
+    # todo 热卸载lora
     def remove_lora(self, lora_id: int) -> bool:
         if not self.lora_manager:
             raise RuntimeError("LoRA is not enabled.")
@@ -1426,13 +1431,14 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
             raise RuntimeError("PromptAdapter is not enabled.")
         return self.prompt_adapter_manager.list_adapters()
 
-    # todo Cuda graph capture a model
+    # todo Cuda graph capture a model ！！！！！！
     @torch.inference_mode()
     def capture_model(self, kv_caches: List[List[torch.Tensor]]) -> None:
         """Cuda graph capture a model.
 
         Note that CUDA graph's performance gain is negligible if number
-        of batched tokens are larger than 200. And since CUDA graph
+        of batched tokens are larger than 200.【todo batched tokens：当前批次中所有样本的令牌总数（实际计算的token数量）=== sum(序列长度) × batch_size】
+        And since CUDA graph
         requires fixed sized tensors, supporting large/variable batch
         size requires high GPU memory overhead. Thus, vLLM only captures
         decoding requests. Mixed batch (chunked prefill + decoding) or
@@ -1564,7 +1570,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
                         # todo 执行图捕获
                         graph_runner.capture(**capture_inputs)
                     self.graph_memory_pool = graph_runner.graph.pool()
-                    # todo 保存图运行器实例
+                    # todo 保存图运行器实例【一个batch size对应一个cuda graph】！！！！！！
                     self.graph_runners[virtual_engine][batch_size] = (
                         graph_runner)
 
@@ -1672,6 +1678,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         if self.lora_config:
             assert model_input.lora_requests is not None
             assert model_input.lora_mapping is not None
+            # todo 激活loras
             self.set_active_loras(model_input.lora_requests,
                                   model_input.lora_mapping)
 
@@ -1695,7 +1702,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         if prefill_meta is None and decode_meta.use_cuda_graph:
             assert model_input.input_tokens is not None
             graph_batch_size = model_input.input_tokens.shape[0]
-            # todo 使用之前保存的cuda graph！！！！！！
+            # todo 使用之前保存的cuda graph！！！！！！根据batch size获取对应的cuda graph
             model_executable = self.graph_runners[virtual_engine][
                 graph_batch_size]
             if previous_hidden_states is not None:
@@ -1943,6 +1950,7 @@ class CUDAGraphRunner(nn.Module):
             )
         # Wait for the warm up operations to finish before proceeding with
         # Graph Capture.
+        # todo torch.cuda.synchronize() 是 PyTorch 中用于 强制同步 CPU 和 GPU 操作 的关键函数
         torch.cuda.synchronize()
         # Capture the graph.
         self._graph = torch.cuda.CUDAGraph()

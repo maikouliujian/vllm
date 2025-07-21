@@ -260,6 +260,7 @@ class EngineCore:
         self.model_executor.collective_rpc("execute_dummy_batch")
 
     def add_lora(self, lora_request: LoRARequest) -> bool:
+        # todo
         return self.model_executor.add_lora(lora_request)
 
     def remove_lora(self, lora_id: int) -> bool:
@@ -329,6 +330,7 @@ class EngineCoreProc(EngineCore):
         parent_process = psutil.Process().parent()
         engine_core = None
         try:
+            # todo 轮训处理请求
             engine_core = EngineCoreProc(*args, **kwargs)
             engine_core.run_busy_loop()
 
@@ -356,6 +358,7 @@ class EngineCoreProc(EngineCore):
             while not self.scheduler.has_requests():
                 logger.debug("EngineCore busy loop waiting.")
                 req = self.input_queue.get()
+                # todo 处理请求！！！！！！
                 self._handle_client_request(*req)
 
             # 2) Handle any new client requests.

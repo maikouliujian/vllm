@@ -298,10 +298,12 @@ class MPClient(EngineCoreClient):
         input_path = get_open_zmq_ipc_path()
 
         # Start EngineCore in background process.
+        # todo 后端处理！！！！！！！
         self.resources.proc_handle = BackgroundProcHandle(
             input_path=input_path,
             output_path=self.output_path,
             process_name="EngineCore",
+            # todo 后端处理核心方法！！！！！！！
             target_fn=EngineCoreProc.run_engine_core,
             process_kwargs={
                 "vllm_config": vllm_config,

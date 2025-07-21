@@ -173,7 +173,8 @@ class PunicaWrapperGPU(PunicaWrapperBase):
             offset_start=0,
             add_inputs=add_inputs,
         )
-
+    # todo 这段代码实现了一个 支持多LoRA适配的线性层增量计算，用于在神经网络推理过程中动态地将多个LoRA
+    #  （Low-Rank Adaptation）的低秩适配效果应用到线性层的输出上。
     def add_lora_linear(self,
                         y: torch.Tensor,
                         x: torch.Tensor,

@@ -125,6 +125,7 @@ class LoRAModel(AdapterModel):
     ) -> "LoRAModel":
         """Create a LoRAModel from a dictionary of tensors."""
         pin_memory = str(device) == "cpu" and is_pin_memory_available()
+        # todo 构建lora权重
         loras: Dict[str, LoRALayerWeights] = {}
         for tensor_name, tensor in tensors.items():
             module_name, is_lora_a, is_bias = parse_fine_tuned_lora_name(
@@ -213,6 +214,7 @@ class LoRAModel(AdapterModel):
         Returns:
             Loaded LoRA Model.
         """
+        # todo lora模型权重
         lora_tensor_path = os.path.join(lora_dir, "adapter_model.safetensors")
         lora_bin_file_path = os.path.join(lora_dir, "adapter_model.bin")
         new_embeddings_tensor_path = os.path.join(
@@ -247,6 +249,7 @@ class LoRAModel(AdapterModel):
                     )
                 # Load tensors if there are only expected modules.
                 for module in f.keys():  # noqa
+                    # todo 权重
                     tensors[module] = f.get_tensor(module)
         elif os.path.isfile(lora_bin_file_path):
             # When a bin file is provided, we rely on config to find unexpected
@@ -284,7 +287,7 @@ class LoRAModel(AdapterModel):
             embeddings = torch.load(new_embeddings_bin_file_path,
                                     map_location=device,
                                     weights_only=True)
-
+        # todo
         return cls.from_lora_tensors(
             lora_model_id=get_lora_id()
             if lora_model_id is None else lora_model_id,
@@ -298,7 +301,7 @@ class LoRAModel(AdapterModel):
             embedding_padding_modules=embedding_padding_modules,
             weights_mapper=weights_mapper)
 
-
+# todo 用来管理多个lora模型
 class LoRAModelManager(AdapterModelManager):
     """A manager that manages multiple LoRA-fine-tuned models."""
 
@@ -339,14 +342,15 @@ class LoRAModelManager(AdapterModelManager):
         # Used for long context lora.
         self.scaling_factor_to_offset: Dict[float, int] = {}
         super().__init__(model)
-
+        # todo 获取model支持的 lora 模型【所有的linear和embedding都支持lora】
         self.supported_lora_modules = get_supported_lora_modules(self.model)
         assert self.supported_lora_modules, "No supported LoRA modules found in"
         f"{self.model.__class__.__name__}."
         if lora_config.long_lora_scaling_factors:
             # We need to replace rotary emb layer to do batch computation
             # for long lora.
-            self.supported_lora_modules.append("rotary_emb")
+            self.c.append("rotary_emb")
+        # todo packed_modules_mapping
         self.packed_modules_mapping = copy.deepcopy(
             self.model.packed_modules_mapping)
         # Used to indicate whether the model is a multimodal model
@@ -357,9 +361,11 @@ class LoRAModelManager(AdapterModelManager):
             and hasattr(self.model, "get_mm_mapping"))
         self.is_pooling_model = is_pooling_model(self.model)
         self.packed_modules: Dict[str, List[str]] = {}
+        # todo 模型的linear层 map<model_name, model>
         self.modules: Dict[str, BaseLayerWithLoRA] = {}
         # Dict instead of a Set for compatibility with LRUCache.
         self._last_mapping: Optional[LoRAMapping] = None
+        # todo 注册lora modules
         self._create_lora_modules()
         self.model.lora_manager = self
         self.adapter_type = 'LoRa'
@@ -390,11 +396,13 @@ class LoRAModelManager(AdapterModelManager):
             raise ValueError("No free lora slots")
         index, _ = first_free_slot
         self._active_adapters[lora_id] = None
+        # todo 通过lora id 获取 lora模型
         lora_model = self._registered_adapters[lora_id]
         logger.debug("Activating LoRA. int id: %d, slot index: %d",
                      lora_model.id, index)
         self.lora_index_to_id[index] = lora_model.id
         for module_name, module in self.modules.items():
+            # todo 获取lora层的权重
             module_lora = self._get_lora_layer_weights(lora_model, module_name)
             if module_lora:
                 module_lora.optimize()
@@ -408,6 +416,7 @@ class LoRAModelManager(AdapterModelManager):
                     raise ValueError(
                         f"Adapter bias cannot be used for {module_name}"
                         " without --enable-lora-bias.")
+                # todo 模型【BaseLayerWithLoRA】设置lora！！！！！！
                 module.set_lora(index, module_lora.lora_a, module_lora.lora_b,
                                 module_lora.embeddings_tensor,
                                 module_lora.bias)
@@ -483,6 +492,7 @@ class LoRAModelManager(AdapterModelManager):
                 continue
             parts = module_name.split(".")[-1]
             packed_moduled_lst = self.packed_modules_mapping.get(parts, [])
+            # todo 替换子module
             new_module = replace_submodule(
                 self.model, module_name,
                 from_layer(module, self.lora_slots, self.lora_config,
@@ -514,6 +524,7 @@ class LoRAModelManager(AdapterModelManager):
             if self.supports_mm and not isinstance(new_module,
                                                    BaseLayerWithLoRA):
                 continue
+            # todo 注册lora 线性层
             self.register_module(module_name, new_module)
             self._register_packed_modules(module_name)
             # All lora layers share the same punica_wrapper based on reference.
@@ -669,6 +680,7 @@ class LoRAModelManager(AdapterModelManager):
                 logger.info_once(
                     "For the pool model, successfully loaded the LoRA weights "
                     "after removing the prefix 'model.'.")
+        # todo 获取lora层权重
         return lora_model.get_lora(org_module_name)
 
     def deactivate_adapter(self, adapter_id: int) -> bool:
@@ -714,8 +726,10 @@ class LRUCacheLoRAModelManager(LoRAModelManager):
                  lora_config: LoRAConfig, device: torch.device):
         super().__init__(model, max_num_seqs, max_num_batched_tokens,
                          vocab_size, lora_config, device)
+        # todo 注册适配器
         self._registered_adapters: LoRALRUCache = LoRALRUCache(
             self.capacity, self.deactivate_adapter)
+        # todo 激活适配器
         self._active_adapters: LoRALRUCache = LoRALRUCache(
             self.lora_slots, self._deactivate_adapter)
 
@@ -737,7 +751,7 @@ class LRUCacheLoRAModelManager(LoRAModelManager):
             self._registered_adapters.touch(lora.id)
             was_added = False
         return was_added
-
+    # todo lru操作！！！！！！
     def activate_adapter(
         self,
         lora_id: int,
@@ -776,7 +790,7 @@ class LRUCacheLoRAModelManager(LoRAModelManager):
 
         self._active_adapters.pin(lora_id)
 
-
+# todo 创建lora manager
 def create_lora_manager(
         model: nn.Module,
         max_num_seqs: int,
@@ -787,6 +801,7 @@ def create_lora_manager(
         lora_manager_cls: Type[LoRAModelManager] = LoRAModelManager,
         **kwargs) -> LoRAModelManager:
     """Create a LoRA adapter for a given model."""
+    # todo 必须有packed_modules_mapping才支持lora
     if not hasattr(model, "packed_modules_mapping"):
         raise ValueError(f"Model {type(model)} is not supported for LoRA.")
     lora_manager = lora_manager_cls(

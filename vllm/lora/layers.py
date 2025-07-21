@@ -397,7 +397,7 @@ class BaseLinearLayerWithLoRA(BaseLayerWithLoRA):
             assert len(self.lora_bias_stacked)
             self.lora_bias_stacked[0][index, 0, :lora_bias.shape[0]].copy_(
                 lora_bias.T, non_blocking=True)
-
+    # todo 应用lora的核心逻辑！！！！！！
     def apply(self,
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
@@ -409,7 +409,7 @@ class BaseLinearLayerWithLoRA(BaseLayerWithLoRA):
         if x.ndim == 3 and output.ndim == 3:
             output = output.flatten(0, 1)
             x = x.flatten(0, 1)
-
+        # todo 应用lora的核心逻辑！！！！！！
         self.punica_wrapper.add_lora_linear(output, x, self.lora_a_stacked,
                                             self.lora_b_stacked,
                                             self.lora_bias_stacked, 1.0,

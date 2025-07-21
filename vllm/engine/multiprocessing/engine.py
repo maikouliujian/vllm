@@ -225,7 +225,7 @@ class MQLLMEngine:
                     logger.debug("Waiting for new requests in engine loop.")
 
             # Handle any input from the client.
-            # todo 处理新的请求！！！！！！
+            # todo 处理新的请求！！！！！！【处理各种请求的逻辑！！！！！！】
             self.handle_new_input()
 
             # Engine step.
@@ -289,6 +289,7 @@ class MQLLMEngine:
                         self.stop_profile()
                 # todo # 如果请求是 RPCLoadAdapterRequest 类型，表示需要加载适配器
                 elif isinstance(request, RPCLoadAdapterRequest):
+                    # todo 添加lora模型！！！！！！
                     self._handle_load_adapter_request(request)
                 elif isinstance(request, RPCResetPrefixCacheRequest):
                     self.reset_prefix_cache()

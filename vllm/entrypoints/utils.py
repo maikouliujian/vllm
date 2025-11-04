@@ -158,6 +158,7 @@ def cli_env_setup():
 
 def _validate_truncation_size(
     max_model_len: int,
+    # todo token截断参数
     truncate_prompt_tokens: Optional[int],
     tokenization_kwargs: Optional[dict[str, Any]] = None,
 ) -> Optional[int]:

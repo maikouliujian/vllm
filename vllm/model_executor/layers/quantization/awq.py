@@ -18,7 +18,7 @@ from vllm.model_executor.parameter import (GroupQuantScaleParameter,
 
 logger = init_logger(__name__)
 
-
+# todo awq配置文件
 class AWQConfig(QuantizationConfig):
     """Config class for AWQ.
 

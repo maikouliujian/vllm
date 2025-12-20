@@ -1613,7 +1613,7 @@ async def init_app_state(
         served_model_names = args.served_model_name
     else:
         served_model_names = [args.model]
-
+    # todo ！！！！！！！！
     if args.enable_log_requests:
         request_logger = RequestLogger(max_log_len=args.max_log_len)
     else:

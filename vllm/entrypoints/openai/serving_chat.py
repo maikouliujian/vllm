@@ -292,7 +292,16 @@ class OpenAIServingChat(OpenAIServing):
                     sampling_params = request.to_sampling_params(
                         max_tokens, self.model_config.logits_processor_pattern,
                         self.default_sampling_params)
-
+                if self.request_logger and raw_request:
+                    try:
+                        body = await raw_request.json()
+                        logger.info("Received raw_request json: %s.", json.dumps(body, ensure_ascii=False))
+                    except Exception as e:
+                        try:
+                            body_bytes = await raw_request.body()
+                            logger.info("Received raw_request body: %s.", body_bytes.decode('utf-8', errors='ignore'))
+                        except:
+                            pass
                 self._log_inputs(request_id,
                                  request_prompts[i],
                                  params=sampling_params,

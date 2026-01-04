@@ -79,7 +79,7 @@ class ToolParser:
             "AbstractToolParser.extract_tool_calls_streaming has not been "
             "implemented!")
 
-
+# todo ToolParserManager
 class ToolParserManager:
     tool_parsers: dict[str, type] = {}
 

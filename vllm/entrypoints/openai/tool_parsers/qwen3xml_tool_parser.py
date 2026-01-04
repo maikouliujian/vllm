@@ -1021,6 +1021,7 @@ class StreamingXMLToolCallParser:
             else:
                 return converted_value
 
+
     def _reset_xml_parser_after_tool_call(self):
         """
         Each tool_call is treated as a separate XML document, 

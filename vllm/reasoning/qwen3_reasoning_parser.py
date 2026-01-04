@@ -9,6 +9,7 @@ from vllm.reasoning.abs_reasoning_parsers import ReasoningParserManager
 from vllm.reasoning.basic_parsers import BaseThinkingReasoningParser
 
 
+
 @ReasoningParserManager.register_module("qwen3")
 class Qwen3ReasoningParser(BaseThinkingReasoningParser):
     """
@@ -48,7 +49,13 @@ class Qwen3ReasoningParser(BaseThinkingReasoningParser):
         Returns:
             tuple[Optional[str], Optional[str]]: reasoning content and content
         """
-
+        """
+        首先，用户问的是3的平方。平方的意思是数字乘以自身。
+        3 × 3 = 9。
+        所以答案是9。
+        </think>
+        答案是9。
+        """
         # Check if the model output contains both <think> and </think> tokens.
         if (self.start_token not in model_output
                 or self.end_token not in model_output):
@@ -69,4 +76,5 @@ class Qwen3ReasoningParser(BaseThinkingReasoningParser):
         reasoning_content, _, content = model_output.partition(self.end_token)
 
         final_content = content or None
+        # todo 正常的结果！！！！！！
         return reasoning_content, final_content

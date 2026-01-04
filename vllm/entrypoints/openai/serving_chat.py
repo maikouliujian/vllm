@@ -103,6 +103,7 @@ class OpenAIServingChat(OpenAIServing):
 
         self.reasoning_parser: Optional[Callable[[AnyTokenizer],
                                                  ReasoningParser]] = None
+        # todo
         if reasoning_parser:
             try:
                 self.reasoning_parser = (

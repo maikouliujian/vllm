@@ -63,6 +63,7 @@ class Qwen3ReasoningParser(BaseThinkingReasoningParser):
 
         # Check if the <think> is present in the model output, remove it
         # if it is present.
+        # todo partition 的返回值一定是一个三元组（3个元素的元组），无论输入是什么情况
         model_output_parts = model_output.partition(self.start_token)
         model_output = model_output_parts[2] if model_output_parts[
             1] else model_output_parts[0]
@@ -77,4 +78,5 @@ class Qwen3ReasoningParser(BaseThinkingReasoningParser):
 
         final_content = content or None
         # todo 正常的结果！！！！！！
+        # todo 返回(thinking的过程， 最终的结果)
         return reasoning_content, final_content

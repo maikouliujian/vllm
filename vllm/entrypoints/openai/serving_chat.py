@@ -337,6 +337,7 @@ class OpenAIServingChat(OpenAIServing):
         result_generator, = generators
 
         # Streaming response
+        # todo 流式返回
         if request.stream:
             return self.chat_completion_stream_generator(
                 request,
@@ -349,6 +350,7 @@ class OpenAIServingChat(OpenAIServing):
                 enable_force_include_usage=self.enable_force_include_usage)
 
         try:
+            # todo 非流式返回
             return await self.chat_completion_full_generator(
                 request, result_generator, request_id, model_name,
                 conversation, tokenizer, request_metadata)
@@ -1246,9 +1248,10 @@ class OpenAIServingChat(OpenAIServing):
                 )
                 choices.append(choice_data)
                 continue
-
+            # todo 如果有reasoning-parser参数
             if self.reasoning_parser:
                 try:
+                    # todo 解析类初始化！！！！！！
                     reasoning_parser = self.reasoning_parser(tokenizer)
                 except RuntimeError as e:
                     logger.exception("Error in reasoning parser creation.")

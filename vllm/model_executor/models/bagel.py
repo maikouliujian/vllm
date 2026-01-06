@@ -320,7 +320,7 @@ class BagelMultiModalProcessor(BaseMultiModalProcessor[BagelProcessingInfo]):
             "pixel_values": MultiModalFieldConfig.batched("image"),
         }
 
-
+# todo
 @MULTIMODAL_REGISTRY.register_processor(
     BagelMultiModalProcessor,
     info=BagelProcessingInfo,

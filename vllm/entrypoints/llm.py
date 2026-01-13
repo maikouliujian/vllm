@@ -294,10 +294,12 @@ class LLM:
         log_non_default_args(engine_args)
 
         # Create the Engine (autoselects V0 vs V1)
+        # todo 使用配置好的engine参数，初始化LLMEngine实例
         self.llm_engine = LLMEngine.from_engine_args(
             engine_args=engine_args, usage_context=UsageContext.LLM_CLASS)
         self.engine_class = type(self.llm_engine)
-
+        # todo 用于全局唯一的request_id，
+        #  在vLLM中内核引擎的处理中，1个prompt视为1个request，分配全局唯一的request_id
         self.request_counter = Counter()
         self.default_sampling_params: Union[dict[str, Any], None] = None
 
@@ -331,14 +333,17 @@ class LLM:
         if self.default_sampling_params:
             return SamplingParams.from_optional(**self.default_sampling_params)
         return SamplingParams()
-
+    # todo 推理
     def generate(
         self,
-        prompts: Union[PromptType, Sequence[PromptType]],
-        sampling_params: Optional[Union[SamplingParams,
+        prompts: Union[PromptType, Sequence[PromptType]], # todo 提示词
+        sampling_params: Optional[Union[SamplingParams, # todo 采样超参，例如温度、top_k等；如果为None则使用vLLM默认的参数
                                         Sequence[SamplingParams]]] = None,
         *,
-        use_tqdm: Union[bool, Callable[..., tqdm]] = True,
+        use_tqdm: Union[bool, Callable[..., tqdm]] = True, # todo 是否使用tqdm
+        # todo 如果想请求特定的lora_adapter，可以将它的path等信息包装在该请求中,
+        #                           但vLLM建议尽量不要使用这种方式，因为私有的lora adapter可能会带来一些
+        #                           安全性的问题
         lora_request: Optional[Union[list[LoRARequest], LoRARequest]] = None,
         priority: Optional[list[int]] = None,
     ) -> list[RequestOutput]:
@@ -389,7 +394,7 @@ class LLM:
         # Add any modality specific loras to the corresponding prompts
         lora_request = self._get_modality_specific_lora_reqs(
             prompts, lora_request)
-
+        # todo # 将request添加到engine中，在vLLM内核运算逻辑中，1个prompt算1个request，需要有1个全局唯一的request_id
         self._validate_and_add_requests(
             prompts=prompts,
             params=sampling_params,
@@ -397,7 +402,7 @@ class LLM:
             lora_request=lora_request,
             priority=priority,
         )
-
+        # todo 运行引擎！！！！！！
         outputs = self._run_engine(use_tqdm=use_tqdm)
         return self.engine_class.validate_outputs(outputs, RequestOutput)
 
@@ -1512,7 +1517,7 @@ class LLM:
             _validate_truncation_size(model_config.max_model_len,
                                       param.truncate_prompt_tokens,
                                       tokenization_kwargs)
-
+            # todo 添加请求
             self._add_request(
                 prompt,
                 params[i] if isinstance(params, Sequence) else params,
@@ -1566,6 +1571,7 @@ class LLM:
         priority: int = 0,
     ) -> None:
         request_id = str(next(self.request_counter))
+        # todo 添加请求
         self.llm_engine.add_request(
             request_id,
             prompt,
@@ -1574,7 +1580,7 @@ class LLM:
             tokenization_kwargs=tokenization_kwargs,
             priority=priority,
         )
-
+    # todo 运行引擎的入口
     def _run_engine(
         self,
         *,
@@ -1596,7 +1602,10 @@ class LLM:
         outputs: list[Union[RequestOutput, PoolingRequestOutput]] = []
         total_in_toks = 0
         total_out_toks = 0
+        # todo  如果当前调度器中还有没完成推理的请求（调度器中waiting/running/swapped任一队列非空）
         while self.llm_engine.has_unfinished_requests():
+            # todo 执行1次推理调度（step），决定哪些请求的数据可以参与到这次推理中
+            # todo 推理核心逻辑！！！！！！
             step_outputs = self.llm_engine.step()
             for output in step_outputs:
                 if output.finished:

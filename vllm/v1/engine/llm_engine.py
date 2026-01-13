@@ -253,7 +253,7 @@ class LLMEngine:
                                               parent_req, idx)
             # Add the request to EngineCore.
             self.engine_core.add_request(child_request)
-
+    # todo 一次推理的核心逻辑！！！！！！
     def step(self) -> Union[list[RequestOutput], list[PoolingRequestOutput]]:
 
         if self.should_execute_dummy_batch:

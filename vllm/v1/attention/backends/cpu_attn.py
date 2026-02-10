@@ -206,7 +206,7 @@ class CPUAttentionMetadataBuilder(AttentionMetadataBuilder[CPUAttentionMetadata]
 
         return attn_metadata
 
-
+# todo cpu attention
 class CPUAttentionBackendImpl(AttentionImpl):
     def __init__(
         self,
@@ -384,6 +384,7 @@ class CPUAttentionBackendImpl(AttentionImpl):
                 )
             elif self.sliding_window[0] != -1 or self.sliding_window[1] != -1:
                 assert attn_metadata.seq_lens is not None
+                # todo attn_masks
                 attn_masks = _make_sliding_window_bias(
                     attn_metadata.sdpa_start_loc,
                     self.sliding_window[0],

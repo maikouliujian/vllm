@@ -221,7 +221,15 @@ class Gemma3Attention(nn.Module):
         k = k.flatten(-2, -1)
 
         q, k = self.rotary_emb(positions, q, k)
+        print("==========q=======", q)
+        print("==========q==shape=====", q.shape)
+        print("==========k=======", k)
+        print("==========k==shape=====", k.shape)
+        print("==========v=======", v)
+        print("==========v==shape=====", v.shape)
         attn_output = self.attn(q, k, v)
+        print("==========attn_output=======", attn_output)
+        print("==========attn_output==shape=====", attn_output.shape)
         output, _ = self.o_proj(attn_output)
         return output
 

@@ -205,6 +205,7 @@ os.environ.setdefault("VLLM_LOGGING_LEVEL", "DEBUG")
 import vllm
 from vllm.config import CUDAGraphMode
 
+
 compilation_config = {"mode": 3, "cudagraph_mode": "FULL_AND_PIECEWISE"}
 model = vllm.LLM(
     model="meta-llama/Llama-3.1-8B-Instruct",

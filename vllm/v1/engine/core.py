@@ -89,6 +89,7 @@ class EngineCore:
         load_general_plugins()
 
         self.vllm_config = vllm_config
+        # todo 打印初始化engine日志！！！！！！！
         if vllm_config.parallel_config.data_parallel_rank == 0:
             logger.info(
                 "Initializing a V1 LLM engine (v%s) with config: %s",

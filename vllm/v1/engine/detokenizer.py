@@ -245,6 +245,7 @@ class FastIncrementalDetokenizer(BaseIncrementalDetokenizer):
             # invalid UTF-8 output, which breaks the internal state of
             # tokenizers' DecodeStream.
             # See https://github.com/vllm-project/vllm/issues/17448.
+            # todo ！！！！！！
             logger.warning(
                 "Encountered invalid prefix detokenization error"
                 " for request %s, resetting decode stream.",

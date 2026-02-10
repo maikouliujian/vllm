@@ -618,6 +618,7 @@ class EngineArgs:
             title="ModelConfig",
             description=ModelConfig.__doc__,
         )
+
         if not ("serve" in sys.argv[1:] and "--help" in sys.argv[1:]):
             model_group.add_argument("--model", **model_kwargs["model"])
         model_group.add_argument("--runner", **model_kwargs["runner"])

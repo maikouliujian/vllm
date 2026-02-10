@@ -80,7 +80,7 @@ class CustomOp(nn.Module):
         # By default, we assume that OOT ops are compatible with the
         # PyTorch-native implementation.
         return self.forward_native(*args, **kwargs)
-
+    # todo 分发forward
     def dispatch_forward(self):
         # NOTE(woosuk): Here we assume that vLLM was built for only one
         # specific backend. Currently, we do not support dynamic dispatching.

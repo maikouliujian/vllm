@@ -210,6 +210,7 @@ class VllmConfig:
     """Observability configuration."""
     quant_config: QuantizationConfig | None = None
     """Quantization configuration."""
+    # todo compilation_config
     compilation_config: CompilationConfig = Field(default_factory=CompilationConfig)
     """`torch.compile` and cudagraph capture configuration for the model.
 

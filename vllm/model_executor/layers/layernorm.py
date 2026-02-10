@@ -310,14 +310,14 @@ class GemmaRMSNorm(CustomOp):
         x: torch.Tensor,
         residual: torch.Tensor | None = None,
     ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
-        if torch.compiler.is_compiling():
-            return self.forward_native(x, residual)
-
-        if not getattr(self, "_is_compiled", False):
-            self.forward_static = torch.compile(  # type: ignore
-                self.forward_static
-            )
-            self._is_compiled = True
+        # if torch.compiler.is_compiling():
+        #     return self.forward_native(x, residual)
+        #
+        # if not getattr(self, "_is_compiled", False): # lj
+        #     self.forward_static = torch.compile(  # type: ignore
+        #         self.forward_static
+        #     )
+        #     self._is_compiled = True
         return self.forward_native(x, residual)
 
 

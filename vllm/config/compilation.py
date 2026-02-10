@@ -289,6 +289,7 @@ class DynamicShapesConfig:
         return hash_factors(factors)
 
 
+# todo --compilation-config '{"dynamic_shapes_config": {"type": "unbacked"}}'
 @config
 @dataclass(config=ConfigDict(extra="forbid"))
 class CompilationConfig:
@@ -543,7 +544,7 @@ class CompilationConfig:
     inductor `call` function in the model runner. The top-level full cudagraph
     capture ignores all partitioning.
     """
-
+    # todo PassConfig！！！！！！！
     pass_config: PassConfig = field(default_factory=PassConfig)
     """Custom inductor passes, see PassConfig for more details"""
 

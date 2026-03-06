@@ -38,7 +38,7 @@ logger = init_logger(__name__)
 
 PADDING_SLOT_ID = -1
 
-
+# todo
 class EagleProposer:
 
     def __init__(
@@ -807,6 +807,7 @@ class EagleProposer:
         return spec_common_attn_metadata, token_indices
 
     def load_model(self, target_model: nn.Module) -> None:
+
         draft_model_config = \
             self.vllm_config.speculative_config.draft_model_config
         target_attn_layer_names = set(

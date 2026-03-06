@@ -81,7 +81,7 @@ class DeepSeekMultiTokenPredictorLayer(nn.Module):
         inputs_embeds[positions == 0] = 0
         inputs_embeds = self.enorm(inputs_embeds)
         previous_hidden_states = self.hnorm(previous_hidden_states)
-
+        # todo inputs_embeds 和 previous_hidden_states 互换一下！！！！！！！
         hidden_states = self.eh_proj(
             torch.cat([inputs_embeds, previous_hidden_states], dim=-1))
 
@@ -194,9 +194,11 @@ class DeepSeekMTP(nn.Module, SupportsPP):
         for name, loaded_weight in weights:
             if "rotary_emb.inv_freq" in name:
                 continue
+            # todo 过滤出mtp层
             spec_layer = get_spec_layer_idx_from_weight_name(self.config, name)
             if spec_layer is None:
                 continue
+            # todo
             name = self._rewrite_spec_layer_name(spec_layer, name)
             for (param_name, weight_name, shard_id) in stacked_params_mapping:
                 # Skip non-stacked layers and experts (experts handled below).
@@ -226,6 +228,7 @@ class DeepSeekMTP(nn.Module, SupportsPP):
 
                 param = params_dict[name]
                 weight_loader = param.weight_loader
+                # todo 把加载的权重赋值给参数
                 weight_loader(param, loaded_weight, shard_id)
                 break
             else:

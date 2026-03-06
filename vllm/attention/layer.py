@@ -183,6 +183,7 @@ class Attention(nn.Module, AttentionLayerBase):
         # During model initialization, the default dtype is set as the model
         # weight and activation dtype.
         dtype = torch.get_default_dtype()
+        # todo 获取真正的attention backend，如KunlunMLABackend
         if attn_backend is None:
             self.attn_backend = get_attn_backend(head_size,
                                                  dtype,
@@ -193,8 +194,9 @@ class Attention(nn.Module, AttentionLayerBase):
                                                  use_sparse=use_sparse)
         else:
             self.attn_backend = attn_backend
-
+        # todo 获取attention backend的实现类：如 KunlunMLAImpl！！！！！！！
         impl_cls = self.attn_backend.get_impl_cls()
+        # todo
         self.impl = impl_cls(num_heads, head_size, scale, num_kv_heads,
                              alibi_slopes, sliding_window, kv_cache_dtype,
                              logits_soft_cap, attn_type,
@@ -320,6 +322,7 @@ class Attention(nn.Module, AttentionLayerBase):
                 if isinstance(attn_metadata, dict):
                     attn_metadata = attn_metadata[self.layer_name]
                 self_kv_cache = self.kv_cache[forward_context.virtual_engine]
+                # todo forward 到 klx mla attn ！！！！！！
                 self.impl.forward(self,
                                   query,
                                   key,
@@ -328,8 +331,10 @@ class Attention(nn.Module, AttentionLayerBase):
                                   attn_metadata,
                                   output=output)
             else:
+                # todo
                 torch.ops.vllm.unified_attention_with_output(
                     query, key, value, output, self.layer_name)
+
             return output.view(-1, hidden_size)
         else:
             if self.use_direct_call:
@@ -594,7 +599,7 @@ direct_register_custom_op(
     tags=tag_cudagraph_unsafe,
 )
 
-
+# todo
 def unified_attention_with_output(
     query: torch.Tensor,
     key: torch.Tensor,
@@ -620,7 +625,7 @@ def unified_attention_with_output(
                       output=output,
                       output_scale=output_scale,
                       output_block_scale=output_block_scale)
-
+    breakpoint()
     maybe_save_kv_layer_to_connector(layer_name, kv_cache)
 
 

@@ -36,7 +36,7 @@ SpeculativeMethod = Literal["ngram", "eagle", "eagle3", "medusa",
 MTP_MODEL_TYPES = ("deepseek_mtp", "mimo_mtp", "glm4_moe_mtp", "ernie_mtp",
                    "qwen3_next_mtp", "longcat_flash_mtp")
 
-
+# todo 投机解码配置！！！！！！
 @config
 @dataclass
 class SpeculativeConfig:
@@ -47,6 +47,7 @@ class SpeculativeConfig:
     num_speculative_tokens: SkipValidation[int] = None  # type: ignore
     """The number of speculative tokens, if provided. It will default to the
     number in the draft model config if present, otherwise, it is required."""
+    # todo 可以选！！！！！！
     model: Optional[str] = None
     """The name of the draft model, eagle head, or additional weights, if
     provided."""
@@ -143,13 +144,14 @@ class SpeculativeConfig:
         hash_str = hashlib.md5(str(factors).encode(),
                                usedforsecurity=False).hexdigest()
         return hash_str
-
+    # todo 
     @staticmethod
     def hf_config_override(hf_config: PretrainedConfig) -> PretrainedConfig:
         if hf_config.model_type in ("deepseek_v3", "deepseek_v32"):
             hf_config.model_type = "deepseek_mtp"
         if hf_config.model_type == "deepseek_mtp":
             n_predict = getattr(hf_config, "num_nextn_predict_layers", None)
+            # todo 替换配置
             hf_config.update({
                 "n_predict": n_predict,
                 "architectures": ["DeepSeekMTPModel"]
@@ -213,6 +215,7 @@ class SpeculativeConfig:
         if self.method in MTP_MODEL_TYPES:
             logger.warning("method `%s` is deprecated and replaced with mtp.",
                            self.method)
+            # todo
             self.method = "mtp"
 
         if self.model is None and self.num_speculative_tokens is not None:
@@ -226,6 +229,7 @@ class SpeculativeConfig:
                     # remove this when the issue is fixed.
                     self.enforce_eager = True
                 # use the draft model from the same model:
+                # todo 在这里替换的！！！！！！
                 self.model = self.target_model_config.model
                 # Align the quantization of draft model for cases such as
                 # --quantization fp8 with a bf16 checkpoint.
@@ -285,6 +289,7 @@ class SpeculativeConfig:
                 # TODO: Move this import to the top once `ModelConfig`
                 # lives in `vllm.config.model`.
                 from vllm.config import ModelConfig
+                # todo 这里取到了draft模型的配置
                 self.draft_model_config = ModelConfig(
                     model=self.model,
                     runner="draft",
@@ -307,6 +312,7 @@ class SpeculativeConfig:
                     quantization=self.quantization,
                     enforce_eager=self.target_model_config.enforce_eager,
                     max_logprobs=self.target_model_config.max_logprobs,
+                    # todo
                     hf_overrides=SpeculativeConfig.hf_config_override,
                 )
 

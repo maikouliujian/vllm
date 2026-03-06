@@ -10,7 +10,7 @@ from vllm.config import CacheConfig
 from vllm.model_executor.custom_op import CustomOp
 from vllm.model_executor.layers.quantization import QuantizationConfig
 
-
+# todo
 @dataclass
 class MLAModules:
     """Modules used in MLA.
@@ -153,7 +153,7 @@ class MultiHeadLatentAttention(CustomOp):
         q = q.view(-1, self.num_heads, self.qk_head_dim)
         # Add head dim of 1 to k_pe
         k_pe = k_pe.unsqueeze(1)
-
+        # todo 更新q的rope
         q[..., self.qk_nope_head_dim:], k_pe = self.rotary_emb(
             positions, q[..., self.qk_nope_head_dim:], k_pe)
 

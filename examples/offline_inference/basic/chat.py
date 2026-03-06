@@ -10,6 +10,12 @@ def create_parser():
     # Add engine args
     EngineArgs.add_cli_args(parser)
     parser.set_defaults(model="meta-llama/Llama-3.2-1B-Instruct")
+    parser.set_defaults(speculative_config={
+                "num_speculative_tokens": 2,
+                "method": "mtp",
+                "draft_tensor_parallel_size":1
+            }
+    )
     # Add sampling params
     sampling_group = parser.add_argument_group("Sampling parameters")
     sampling_group.add_argument("--max-tokens", type=int)
@@ -88,6 +94,7 @@ def main(args: dict):
             chat_template=chat_template,
         )
         print_outputs(outputs)
+
 
 
 if __name__ == "__main__":

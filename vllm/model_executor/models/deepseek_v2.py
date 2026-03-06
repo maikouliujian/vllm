@@ -922,6 +922,7 @@ class DeepseekV2MLAAttention(nn.Module):
 
         if rope_scaling:
             rope_scaling["rope_type"] = 'deepseek_yarn'
+        # todo rope从这里传入的！！！！！！
         self.rotary_emb = get_rope(qk_rope_head_dim,
                                    rotary_dim=qk_rope_head_dim,
                                    max_position=max_position_embeddings,
@@ -942,7 +943,7 @@ class DeepseekV2MLAAttention(nn.Module):
                                    topk_indices_buffer, f"{prefix}.indexer")
         else:
             self.indexer = None
-
+        # todo
         mla_modules = MLAModules(
             kv_a_layernorm=self.kv_a_layernorm,
             kv_b_proj=self.kv_b_proj,
@@ -1207,6 +1208,7 @@ class DeepseekV2ForCausalLM(nn.Module, SupportsPP, MixtureOfExperts,
 
         self.model = DeepseekV2Model(vllm_config=vllm_config,
                                      prefix=maybe_prefix(prefix, "model"))
+
         if get_pp_group().is_last_rank:
             self.lm_head = ParallelLMHead(
                 config.vocab_size,
@@ -1432,6 +1434,7 @@ class DeepseekV3ForCausalLM(DeepseekV2ForCausalLM):
 
 # Compatibility with
 # https://huggingface.co/deepseek-ai/DeepSeek-V3-Base/blob/main/configuration_deepseek.py
+# todo 过滤出mtp层
 def get_spec_layer_idx_from_weight_name(config: Union[DeepseekV2Config,
                                                       DeepseekV3Config],
                                         weight_name: str) -> Optional[int]:

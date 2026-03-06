@@ -677,13 +677,14 @@ def fastsafetensors_weights_iterator(
         finally:
             loader.close()
 
-
+# todo 真正加载模型权重的地方！！！！！！！
 def pt_weights_iterator(
     hf_weights_files: list[str],
     use_tqdm_on_load: bool,
     pt_load_map_location: Union[str, dict[str, str]] = "cpu",
 ) -> Generator[tuple[str, torch.Tensor], None, None]:
     """Iterate over the weights in the model bin/pt files."""
+    # todo 真正加载模型权重的地方！！！！！！！
     for bin_file in tqdm(
             hf_weights_files,
             desc="Loading pt checkpoint shards",

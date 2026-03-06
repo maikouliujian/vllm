@@ -157,6 +157,7 @@ class DefaultModelLoader(BaseModelLoader):
     ) -> Generator[tuple[str, torch.Tensor], None, None]:
         """Get an iterator for the model weights based on the load format."""
         extra_config = self.load_config.model_loader_extra_config
+        # todo 读取权重文件
         hf_folder, hf_weights_files, use_safetensors = self._prepare_weights(
             source.model_or_path, source.revision, source.fall_back_to_pt,
             source.allow_patterns_overrides)
@@ -261,6 +262,7 @@ class DefaultModelLoader(BaseModelLoader):
     def load_weights(self, model: nn.Module,
                      model_config: ModelConfig) -> None:
         weights_to_load = {name for name, _ in model.named_parameters()}
+        # todo 是合并后的权重！！！！！！
         loaded_weights = model.load_weights(
             self.get_all_weights(model_config, model))
         self.counter_after_loading_weights = time.perf_counter()
@@ -270,6 +272,7 @@ class DefaultModelLoader(BaseModelLoader):
             self.counter_before_loading_weights)
         # We only enable strict check for non-quantized models
         # that have loaded weights tracking currently.
+        # todo!!!!!!
         if model_config.quantization is None and loaded_weights is not None:
             weights_not_loaded = weights_to_load - loaded_weights
             if weights_not_loaded:

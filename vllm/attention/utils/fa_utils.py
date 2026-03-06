@@ -74,6 +74,7 @@ def flash_attn_supports_mla():
         try:
             from vllm.vllm_flash_attn.flash_attn_interface import (
                 is_fa_version_supported)
+            # todo 需要大于3
             return is_fa_version_supported(3) \
                 and current_platform.get_device_capability()[0] == 9
         except (ImportError, AssertionError):

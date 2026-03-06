@@ -31,7 +31,7 @@ class BaseModelLoader(ABC):
         """Load weights into a model. This standalone API allows 
         inplace weights loading for an already-initialized model"""
         raise NotImplementedError
-
+    # todo
     def load_model(self, vllm_config: VllmConfig,
                    model_config: ModelConfig) -> nn.Module:
         """Load a model with the given configurations."""

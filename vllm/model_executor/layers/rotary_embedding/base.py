@@ -46,6 +46,7 @@ class RotaryEmbedding(CustomOp):
         if not self.use_flashinfer:
             cache = cache.to(dtype)
         self.cos_sin_cache: torch.Tensor
+        # todo
         self.register_buffer("cos_sin_cache", cache, persistent=False)
         self.is_rocm_triton_rotary_embedding_enabled = \
             is_rocm_triton_rotary_embedding_enabled()

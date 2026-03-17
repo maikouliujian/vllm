@@ -117,6 +117,7 @@ class EngineCore:
             self._eep_scale_up_before_kv_init()
 
         # Setup KV Caches and update CacheConfig after profiling.
+        # todo 初始化kvcache
         num_gpu_blocks, num_cpu_blocks, kv_cache_config = self._initialize_kv_caches(
             vllm_config
         )
@@ -249,6 +250,7 @@ class EngineCore:
             else:
                 # Profiles the peak memory usage of the model to determine how
                 # much memory can be allocated for kv cache.
+                # todo
                 available_gpu_memory = self.model_executor.determine_available_memory()
                 self.available_gpu_memory_for_kv_cache = available_gpu_memory[0]
         else:

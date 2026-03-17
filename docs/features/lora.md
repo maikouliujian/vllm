@@ -374,6 +374,7 @@ Note: Default multimodal LoRAs are currently only available for `.generate` and 
 
 ### Configuring `max_lora_rank`
 
+
 The `--max-lora-rank` parameter controls the maximum rank allowed for LoRA adapters. This setting affects memory allocation and performance:
 
 - **Set it to the maximum rank** among all LoRA adapters you plan to use

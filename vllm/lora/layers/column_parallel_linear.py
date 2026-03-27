@@ -137,6 +137,7 @@ class ColumnParallelLinearWithLoRA(BaseLinearLayerWithLoRA):
                 if not self.base_layer.skip_bias_add else None)
 
         # Matrix multiply.
+        # todo 动态调用lora的逻辑！！！！！！
         output_parallel = self.apply(input_, bias)
         if self.base_layer.gather_output and self.tp_size > 1:
             # All-gather across the partitions.
@@ -339,10 +340,12 @@ class QKVParallelLinearWithLoRA(ColumnParallelLinearWithLoRA):
         lora_b_q = lora_b[self.q_proj_shard_size *
                           self.q_shard_id:self.q_proj_shard_size *
                           (self.q_shard_id + 1), :]
+        # todo 跳过所有的 Q 区域才能找到 K。
         k_offset = self.q_proj_total_size
         lora_b_k = lora_b[k_offset +
                           self.kv_proj_shard_size * self.kv_shard_id:k_offset +
                           self.kv_proj_shard_size * (self.kv_shard_id + 1), :]
+        # todo 跳过 Q 和 K 才能找到 V。
         v_offset = k_offset + self.kv_proj_total_size
         lora_b_v = lora_b[v_offset +
                           self.kv_proj_shard_size * self.kv_shard_id:v_offset +
@@ -373,7 +376,7 @@ class QKVParallelLinearWithLoRA(ColumnParallelLinearWithLoRA):
         return type(source_layer) is QKVParallelLinear and len(
             packed_modules_list) == 1
 
-
+# todo lora
 class MergedQKVParallelLinearWithLoRA(MergedColumnParallelLinearWithLoRA):
     """MergedColumnParallelLinear layer that is composed of 3 sublayers (slices)
     packed together in qkv proj fashion

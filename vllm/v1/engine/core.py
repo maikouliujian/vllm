@@ -1042,6 +1042,8 @@ class DPEngineCoreProc(EngineCoreProc):
             self._process_input_queue()
 
             # 2) Step the engine core.
+            # todo 第一次到达时，没有请求，会先执行dummy_run；
+            # todo 第二次到达时，才会真正执行！！！！！！
             executed = self._process_engine_step()
             self._maybe_publish_request_counts()
 
@@ -1053,6 +1055,7 @@ class DPEngineCoreProc(EngineCoreProc):
 
                 # We are in a running state and so must execute a dummy pass
                 # if the model didn't execute any ready requests.
+                # todo 没有请求到达时，先运行dummy_run进行warmup
                 self.execute_dummy_batch()
 
             # 3) All-reduce operation to determine global unfinished reqs.

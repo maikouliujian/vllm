@@ -172,7 +172,7 @@ class AsyncGPUModelRunnerOutput(AsyncModelRunnerOutput):
         output.sampled_token_ids = valid_sampled_token_ids
         return output
 
-
+# todo lora相关的LoRAModelRunnerMixin！！！！！！
 class GPUModelRunner(LoRAModelRunnerMixin, KVConnectorModelRunnerMixin):
 
     def __init__(
@@ -2634,6 +2634,7 @@ class GPUModelRunner(LoRAModelRunnerMixin, KVConnectorModelRunnerMixin):
             logger.info("Loading model from scratch...")
             self.model = model_loader.load_model(
                 vllm_config=self.vllm_config, model_config=self.model_config)
+            # todo 开启lora！！！！！！
             if self.lora_config:
                 self.model = self.load_lora_model(self.model, self.vllm_config,
                                                   self.device)
@@ -2892,7 +2893,7 @@ class GPUModelRunner(LoRAModelRunnerMixin, KVConnectorModelRunnerMixin):
                         pin_memory=self.pin_memory,
                         merge_by_field_config=model.merge_by_field_config,
                     ))
-
+    # todo warmup!!!!!!!
     @torch.inference_mode()
     def _dummy_run(
         self,

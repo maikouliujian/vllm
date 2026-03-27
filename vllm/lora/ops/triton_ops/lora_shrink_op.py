@@ -15,6 +15,7 @@ from vllm.triton_utils import tl, triton
 from vllm.utils import direct_register_custom_op
 
 
+
 @triton.jit
 def _lora_shrink_kernel(input_ptr, lora_ptr, out_ptr, M, N, K,
                         token_indices_sorted_by_lora_ids, num_tokens_per_lora,

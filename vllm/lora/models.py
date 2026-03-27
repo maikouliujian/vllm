@@ -381,6 +381,7 @@ class LoRAModelManager:
         self.modules: dict[str, BaseLayerWithLoRA] = {}
         # Dict instead of a set for compatibility with LRUCache.
         self._last_mapping: Optional[LoRAMapping] = None
+        # todo 创建lora modules
         self._create_lora_modules()
         self.model.lora_manager = self
 
@@ -499,6 +500,7 @@ class LoRAModelManager:
             packed_moduled_lst = self.packed_modules_mapping.get(parts, [])
             new_module = replace_submodule(
                 self.model, module_name,
+                # todo 替换lora linear的！！！！！！
                 from_layer(module, self.lora_slots, self.lora_config,
                            packed_moduled_lst, self.model.config))
 

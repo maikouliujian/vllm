@@ -98,7 +98,7 @@ class BaseLinearLayerWithLoRA(BaseLayerWithLoRA):
                 self.lora_bias_stacked = cast(tuple[torch.Tensor, ...],
                                               self.lora_bias_stacked)
                 self.lora_bias_stacked[s_index][index] = 0
-
+    # todo 设置lora！！！！！！
     def set_lora(
         self,
         index: int,
@@ -146,9 +146,10 @@ class BaseLinearLayerWithLoRA(BaseLayerWithLoRA):
         if x.ndim == 3 and output.ndim == 3:
             output = output.flatten(0, 1)
             x = x.flatten(0, 1)
-
+        # todo self.punica_wrapper.add_lora_linear 添加lora层！！！！！！
         lora_output: Optional[
             torch.Tensor] = self.punica_wrapper.add_lora_linear(
+            # todo  self.lora_a_stacked 和 self.lora_b_stacked
                 output, x, self.lora_a_stacked, self.lora_b_stacked,
                 self.lora_bias_stacked, 1.0, self.output_slices)
         if not current_platform.can_update_inplace():

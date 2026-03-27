@@ -108,6 +108,7 @@ from vllm.utils import (Device, FlexibleArgumentParser, decorate_logs,
 from vllm.v1.engine.exceptions import EngineDeadError
 from vllm.v1.metrics.prometheus import get_prometheus_registry
 from vllm.version import __version__ as VLLM_VERSION
+import time
 
 prometheus_multiproc_dir: tempfile.TemporaryDirectory
 
@@ -346,7 +347,9 @@ def engine_client(request: Request) -> EngineClient:
 async def health(raw_request: Request) -> Response:
     """Health check."""
     try:
+        start = time.perf_counter()
         await engine_client(raw_request).check_health()
+        logger.info(f"~~~check health duration: {time.perf_counter() - start}s~~~")
         return Response(status_code=200)
     except EngineDeadError:
         return Response(status_code=503)

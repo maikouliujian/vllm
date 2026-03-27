@@ -160,7 +160,8 @@ class PunicaWrapperGPU(PunicaWrapperBase):
             offset_start=0,
             add_inputs=add_inputs,
         )
-
+    # todo 这段代码是 vLLM 处理动态 LoRA（Dynamic LoRA）的核心逻辑。
+    #  它的本质是将原本一个大的矩阵乘法（LoRA 权重对齐），拆解成了两个连续的 Triton Kernel 调用：Shrink（降维） 和 Expand（升维）。
     def add_lora_linear(self,
                         y: torch.Tensor,
                         x: torch.Tensor,

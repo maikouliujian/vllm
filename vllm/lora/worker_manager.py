@@ -94,6 +94,7 @@ class WorkerLoRAManager:
                     expected_lora_modules.append(module)
 
             expected_lora_modules = list(set(expected_lora_modules))
+            # todo lora模型路径
             lora_path = get_adapter_absolute_path(lora_request.lora_path)
 
             peft_helper = PEFTHelper.from_local_dir(
@@ -108,7 +109,7 @@ class WorkerLoRAManager:
             # to ensure correct loading of lora weights.
             model = self._adapter_manager.model
             hf_to_vllm_mapper = getattr(model, "hf_to_vllm_mapper", None)
-
+            # todo 加载lora权重
             lora = self._lora_model_cls.from_local_checkpoint(
                 lora_path,
                 expected_lora_modules,
@@ -248,6 +249,7 @@ class LRUCacheWorkerLoRAManager(WorkerLoRAManager):
             # evicting any existing adapters.
             # This may cause the # of loaded lora adapters to very temporarily
             # exceed `--max-cpu-loras`.
+            # todo 第一次需要加载lora适配器
             lora = self._load_adapter(lora_request)
 
             # Loading succeeded, now check if we will exceed cache capacity and
@@ -257,11 +259,13 @@ class LRUCacheWorkerLoRAManager(WorkerLoRAManager):
                                   LRUCacheLoRAModelManager)
                 self._adapter_manager.remove_oldest_adapter()
             # Then add the new adapter to the cache
+            # todo 注册lora模型
             loaded = self._adapter_manager.add_adapter(lora)
         else:
             # If the lora is already loaded, just touch it to
             # update its position in the caches
             loaded = self._adapter_manager.get_adapter(
                 lora_request.lora_int_id) is not None
+        # todo 激活lora模型
         self._adapter_manager.activate_adapter(lora_request.lora_int_id)
         return loaded

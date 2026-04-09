@@ -71,6 +71,7 @@ class Request:
         cache_salt: str | None = None,
         priority: int = 0,
         trace_headers: Mapping[str, str] | None = None,
+        # todo block_hasher
         block_hasher: Callable[["Request"], list["BlockHash"]] | None = None,
         resumable: bool = False,
         reasoning_ended: bool | None = None,
@@ -128,6 +129,7 @@ class Request:
         )
 
         # Used in async scheduling.
+        # todo num_output_placeholders等待验证的推测 token 数量
         self.num_output_placeholders = 0
         # Used in forced preemption (reset_prefix_cache) with async scheduling.
         self.discard_latest_async_tokens = False
@@ -162,7 +164,7 @@ class Request:
 
         # The number of tokens that have been computed remotely.
         self.num_external_computed_tokens = 0
-
+        # todo 当前Request中已经计算完成并生效的、各个数据块（Block）的哈希值
         self.block_hashes: list[BlockHash] = []
         # Store the block hasher without binding self to avoid creating a
         # reference cycle (Request -> partial -> Request) that prevents
@@ -218,6 +220,7 @@ class Request:
     ) -> None:
         if isinstance(token_ids, int):
             self._output_token_ids.append(token_ids)
+            # todo 一直在更新！！！！！！
             self._all_token_ids.append(token_ids)
         else:
             self._output_token_ids.extend(token_ids)
@@ -309,9 +312,11 @@ class RequestStatus(enum.IntEnum):
 
     WAITING = enum.auto()
     WAITING_FOR_FSM = enum.auto()
+    # todo 常见于 PD 分离（推理/预填充分离） 架构。表示 Prefill 是在另一台机器完成的，当前机器正在等待远程传输过来的 KV Cache。
     WAITING_FOR_REMOTE_KVS = enum.auto()
     WAITING_FOR_STREAMING_REQ = enum.auto()
     RUNNING = enum.auto()
+    # todo 被抢占
     PREEMPTED = enum.auto()
     # Note: anything after PREEMPTED will be considered
     # as a finished status.
@@ -320,6 +325,7 @@ class RequestStatus(enum.IntEnum):
     FINISHED_ABORTED = enum.auto()
     FINISHED_IGNORED = enum.auto()
     FINISHED_ERROR = enum.auto()
+    # todo 由于触发了重复惩罚（Repetition Penalty）相关的限制而停止（较少见，通常用于特定的解码策略）。
     FINISHED_REPETITION = enum.auto()
 
     def __str__(self) -> str:

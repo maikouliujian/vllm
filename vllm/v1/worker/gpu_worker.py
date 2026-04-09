@@ -347,7 +347,7 @@ class Worker(WorkerBase):
 
     def reload_weights(self, *args, **kwargs) -> None:
         self.model_runner.reload_weights(*args, **kwargs)
-    # todo
+    # todo 计算kvcache可分配大小
     @torch.inference_mode()
     def determine_available_memory(self) -> int:
         """Profiles the peak memory usage of the model to determine how much
@@ -383,10 +383,12 @@ class Worker(WorkerBase):
 
         # Execute a forward pass with dummy inputs to profile the memory usage
         # of the model.
+        # todo 重点！！！！！！
         with memory_profiling(
             self.init_snapshot,
             weights_memory=int(self.model_runner.model_memory_usage),
         ) as profile_result:
+            # todo 使用dummy数据进行一次推理，dummy run，用来计算显存占用！！！！！！
             self.model_runner.profile_run()
 
         self.non_torch_memory = profile_result.non_torch_increase
@@ -404,6 +406,7 @@ class Worker(WorkerBase):
             "To fix this, ensure consistent GPU memory allocation or "
             "isolate vLLM in its own container."
         )
+        # todo kvcache可以占用的显存大小
         self.available_kv_cache_memory_bytes = (
             self.requested_memory - profile_result.non_kv_cache_memory
         )

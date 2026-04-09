@@ -54,6 +54,7 @@ class BlockHashToBlockMap:
     """
 
     def __init__(self):
+        # todo dict[int, KVCacheBlock]：当有多个相同的Block存在时
         self._cache: dict[
             BlockHashWithGroupId, KVCacheBlock | dict[int, KVCacheBlock]
         ] = {}
@@ -164,9 +165,11 @@ class BlockPool:
         # Free block queue that constructs and manipulates a doubly linked
         # list of free blocks (including eviction candidates when caching is
         # enabled).
+        # todo 管理空闲block
         self.free_block_queue = FreeKVCacheBlockQueue(self.blocks)
 
         # Cache for block lookup
+        # todo k ===> block【prefix cache用】
         self.cached_block_hash_to_block: BlockHashToBlockMap = BlockHashToBlockMap()
 
         # To represent a placeholder block with block_id=0.
@@ -482,6 +485,7 @@ class BlockPool:
         Returns:
             The number of free blocks.
         """
+        # todo 获取空闲的block
         return self.free_block_queue.num_free_blocks
 
     def get_usage(self) -> float:

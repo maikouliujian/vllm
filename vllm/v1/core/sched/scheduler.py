@@ -102,6 +102,7 @@ class Scheduler(SchedulerInterface):
         self.max_num_scheduled_tokens = (
             self.scheduler_config.max_num_scheduled_tokens
             if self.scheduler_config.max_num_scheduled_tokens
+            # todo
             else self.scheduler_config.max_num_batched_tokens
         )
         self.max_model_len = vllm_config.model_config.max_model_len
@@ -159,7 +160,9 @@ class Scheduler(SchedulerInterface):
                 f"Unknown scheduling policy: {self.scheduler_config.policy}"
             ) from e
         # Priority queues for requests.
+        # todo waiting队列
         self.waiting = create_request_queue(self.policy)
+        # todo running队列
         self.running: list[Request] = []
 
         # The request IDs that are finished in between the previous and the
@@ -318,7 +321,7 @@ class Scheduler(SchedulerInterface):
                 # prefill the last few tokens
                 pass
         return num_new_tokens
-
+    # todo 一次调度！！！！！！
     def schedule(self) -> SchedulerOutput:
         # NOTE(woosuk) on the scheduling algorithm:
         # There's no "decoding phase" nor "prefill phase" in the scheduler.
@@ -331,34 +334,51 @@ class Scheduler(SchedulerInterface):
         # chunked prefills, prefix caching, speculative decoding,
         # and the "jump decoding" optimization in the future.
 
-        scheduled_new_reqs: list[Request] = []
-        scheduled_resumed_reqs: list[Request] = []
-        scheduled_running_reqs: list[Request] = []
-        preempted_reqs: list[Request] = []
+        # todo # NOTE(woosuk): 关于调度算法的笔记：
+        #     # 调度器中没有显式的“预填充阶段”或“解码阶段”。
+        #     # 每个请求只需维护 num_computed_tokens（已计算数）和 num_tokens_with_spec（带投机的总数）。
+        #     # 在每一步，调度器尝试为请求分配 Token，使已计算数追上总数。
+        #     # 这种设计通用于分块预填充、前缀缓存、投机采样及未来的跳跃解码优化。
+        #     # 初始化四个请求队列：新请求、恢复的请求、运行中的请求、被抢占的请求
 
+        scheduled_new_reqs: list[Request] = []
+        # todo 重新被调度的请求
+        scheduled_resumed_reqs: list[Request] = []
+        # todo 将要被调度的请求
+        scheduled_running_reqs: list[Request] = []
+        # todo 存在竞争的请求
+        preempted_reqs: list[Request] = []
+        # todo 映射表：请求 ID -> 新分配的 KV 块
         req_to_new_blocks: dict[str, KVCacheBlocks] = {}
+        # todo 映射表：请求id -> 占用的tokens
         num_scheduled_tokens: dict[str, int] = {}
+        # todo 获取本次迭代允许计算的最大 Token 总量（防止显存/算力溢出）
         token_budget = self.max_num_scheduled_tokens
+        # todo 如果处于全局暂停状态，预算设为 0，不调度任何请求
         if self._pause_state == PauseState.PAUSED_ALL:
             # Do not schedule any requests when paused.
             token_budget = 0
 
         # Encoder-related.
+        # todo 编码器（Encoder）相关预算与输入记录
         scheduled_encoder_inputs: dict[str, list[int]] = {}
         encoder_compute_budget = self.max_num_encoder_input_tokens
         # Spec decode-related.
+        # todo 投机采样（Spec Decode）相关的 Token 记录
         scheduled_spec_decode_tokens: dict[str, list[int]] = {}
 
         # For logging.
+        # todo 记录当前调度开始的时间戳，用于性能统计
         scheduled_timestamp = time.monotonic()
-
+        # todo 通知 KV Cache 管理器：新的一步调度开始了（可能涉及引用计数更新）
         self.kv_cache_manager.new_step_starts()
 
         # First, schedule the RUNNING requests.
         req_index = 0
         while req_index < len(self.running) and token_budget > 0:
+            # todo 优先处理正在运行中的请求；running队列中大部分情况下，都是在decode的请求；但是如果开启chunk prefill时，也可能是prefill阶段的请求
             request = self.running[req_index]
-
+            # todo 异步调度检查：如果之前的步骤已经确定能达到最大长度，则跳过本次重复调度
             if (
                 request.num_output_placeholders > 0
                 # This is (num_computed_tokens + 1) - (num_output_placeholders - 1).
@@ -374,7 +394,8 @@ class Scheduler(SchedulerInterface):
                 # partial draft tokens since this prevents uniform decode optimizations.
                 req_index += 1
                 continue
-
+            # todo 计算该请求还需要计算多少个 Token 才能“追上”目标进度
+            # todo 本次任务量 = ( 基础目标 + 额外预留 ) - 实际已完成量
             num_new_tokens = (
                 request.num_tokens_with_spec
                 + request.num_output_placeholders
@@ -382,10 +403,12 @@ class Scheduler(SchedulerInterface):
             )
             if 0 < self.scheduler_config.long_prefill_token_threshold < num_new_tokens:
                 num_new_tokens = self.scheduler_config.long_prefill_token_threshold
+            # todo # 受限于剩余的总 Token 预算
             num_new_tokens = min(num_new_tokens, token_budget)
 
             # Make sure the input position does not exceed the max model len.
             # This is necessary when using spec decoding.
+            # todo 确保位置索引不会超过模型的硬性最大长度限制
             num_new_tokens = min(
                 num_new_tokens, self.max_model_len - 1 - request.num_computed_tokens
             )
@@ -394,6 +417,7 @@ class Scheduler(SchedulerInterface):
             encoder_inputs_to_schedule = None
             external_load_encoder_input: list[int] = []
             new_encoder_compute_budget = encoder_compute_budget
+            # todo 多模态
             if request.has_encoder_inputs:
                 (
                     encoder_inputs_to_schedule,
@@ -412,7 +436,7 @@ class Scheduler(SchedulerInterface):
                 num_new_tokens = self._mamba_block_aligned_split(
                     request, num_new_tokens
                 )
-
+            # todo 如果最终算出来本次不需要算任何 Token，可能因为预算耗尽或异步等待
             if num_new_tokens == 0:
                 # The request cannot be scheduled because one of the following
                 # reasons:
@@ -432,8 +456,10 @@ class Scheduler(SchedulerInterface):
                 continue
 
             # Schedule newly needed KV blocks for the request.
+            # todo 为该请求申请物理 KV Cache 槽位
             with record_function_or_nullcontext("schedule: allocate_slots"):
                 while True:
+                    # todo 轮训去申请block
                     new_blocks = self.kv_cache_manager.allocate_slots(
                         request,
                         num_new_tokens,
@@ -446,12 +472,15 @@ class Scheduler(SchedulerInterface):
 
                     # The request cannot be scheduled.
                     # Preempt the lowest-priority request.
+                    # todo --- 空间不足，开始执行抢占（Preemption）逻辑 ---
+                    # todo 如果是基于优先级的策略，踢掉优先级最低、到达最晚的请求
                     if self.policy == SchedulingPolicy.PRIORITY:
                         preempted_req = max(
                             self.running,
                             key=lambda r: (r.priority, r.arrival_time),
                         )
                         self.running.remove(preempted_req)
+                        # todo # 如果踢掉的是刚才已经计划调度的请求，需退回预算
                         if preempted_req in scheduled_running_reqs:
                             preempted_req_id = preempted_req.request_id
                             scheduled_running_reqs.remove(preempted_req)
@@ -472,13 +501,14 @@ class Scheduler(SchedulerInterface):
                             req_index -= 1
                     else:
                         preempted_req = self.running.pop()
-
+                    # todo # 执行真正的抢占动作（释放显存、记录状态）
                     self._preempt_request(preempted_req, scheduled_timestamp)
                     preempted_reqs.append(preempted_req)
                     if preempted_req == request:
                         # No more request to preempt. Cannot schedule this request.
                         break
-
+            # todo 必须有block才能调度request
+            # todo 如果没有分配到物理块，模型就没有地方存放 KV Cache；如果没有地方存 KV Cache，模型就无法进行下一步计算
             if new_blocks is None:
                 # Cannot schedule this request.
                 break
@@ -488,10 +518,12 @@ class Scheduler(SchedulerInterface):
             request_id = request.request_id
             req_to_new_blocks[request_id] = new_blocks
             num_scheduled_tokens[request_id] = num_new_tokens
+            # todo token预算减少！！！！！！
             token_budget -= num_new_tokens
             req_index += 1
 
             # Speculative decode related.
+            # todo # 处理投机采样：如果有预估的 Draft Tokens，记录下来
             if request.spec_token_ids:
                 num_scheduled_spec_tokens = (
                     num_new_tokens
@@ -523,6 +555,7 @@ class Scheduler(SchedulerInterface):
                         self.ec_connector.update_state_after_alloc(request, i)
 
         # Record the LoRAs in scheduled_running_reqs
+        # todo # 处理 LoRA：统计本次调度涉及的所有 LoRA 模型，确保不超过硬件上限
         scheduled_loras: set[int] = set()
         if self.lora_config:
             scheduled_loras = set(
@@ -533,15 +566,18 @@ class Scheduler(SchedulerInterface):
             assert len(scheduled_loras) <= self.lora_config.max_loras
 
         # Next, schedule the WAITING requests.
+        # todo # --- 第二阶段：调度等待中（WAITING）的新请求 ---
+        # todo # 只有在没有发生抢占且未暂停的情况下，才处理新请求
         if not preempted_reqs and self._pause_state == PauseState.UNPAUSED:
             # Use a temporary RequestQueue to collect requests that need to be
             # skipped and put back at the head of the waiting queue later
             skipped_waiting_requests = create_request_queue(self.policy)
 
             while self.waiting and token_budget > 0:
+                # todo 如果运行中请求数已达上限，停止调度新请求
                 if len(self.running) == self.max_num_running_reqs:
                     break
-
+                # todo waiting队列
                 request = self.waiting.peek_request()
                 request_id = request.request_id
 
@@ -602,8 +638,10 @@ class Scheduler(SchedulerInterface):
                 connector_prefix_cache_queries, connector_prefix_cache_hits = 0, 0
 
                 # Get already-cached tokens.
+                # todo # 获取前缀缓存（Prefix Caching）命中情况
                 if request.num_computed_tokens == 0:
                     # Get locally-cached tokens.
+                    # todo # 检查本地磁盘/显存是否有可复用的计算块
                     new_computed_blocks, num_new_local_computed_tokens = (
                         self.kv_cache_manager.get_computed_blocks(request)
                     )
@@ -663,6 +701,7 @@ class Scheduler(SchedulerInterface):
 
                     # chunked prefill has to be enabled explicitly to allow
                     # pooling requests to be chunked
+                    # todo # 如果不支持分块预填充且预算不足，直接中断（FCFS 原则）
                     if (
                         not self.scheduler_config.enable_chunked_prefill
                         and num_new_tokens > token_budget
@@ -722,7 +761,7 @@ class Scheduler(SchedulerInterface):
                         request.get_num_encoder_embeds(i)
                         for i in encoder_inputs_to_schedule
                     )
-
+                # todo 为新请求分配 KV Cache 空间
                 new_blocks = self.kv_cache_manager.allocate_slots(
                     request,
                     num_new_tokens,
@@ -735,6 +774,7 @@ class Scheduler(SchedulerInterface):
                 )
 
                 if new_blocks is None:
+                    # todo 空间不足，新请求进不来
                     # The request cannot be scheduled.
 
                     # NOTE: we need to untouch the request from the encode cache
@@ -791,6 +831,7 @@ class Scheduler(SchedulerInterface):
                     request_id
                 )
                 num_scheduled_tokens[request_id] = num_new_tokens
+                # todo 减少token额度
                 token_budget -= num_new_tokens
                 request.status = RequestStatus.RUNNING
                 request.num_computed_tokens = num_computed_tokens
@@ -816,6 +857,8 @@ class Scheduler(SchedulerInterface):
                 self.waiting.prepend_requests(skipped_waiting_requests)
 
         # Check if the scheduling constraints are satisfied.
+        # todo --- 第三阶段：构建输出与状态更新 ---
+        # todo 最终的断言检查，确保没算错
         total_num_scheduled_tokens = sum(num_scheduled_tokens.values())
         assert total_num_scheduled_tokens <= self.max_num_scheduled_tokens
 
@@ -830,6 +873,7 @@ class Scheduler(SchedulerInterface):
 
         # Get the longest common prefix among all requests in the running queue.
         # This can be potentially used for cascade attention.
+        # todo 获取所有运行中请求的公共前缀长度（用于 Cascade Attention 优化）
         num_common_prefix_blocks = [0] * len(self.kv_cache_config.kv_cache_groups)
         with record_function_or_nullcontext("schedule: get_num_common_prefix_blocks"):
             if self.running:
@@ -907,6 +951,7 @@ class Scheduler(SchedulerInterface):
 
         with record_function_or_nullcontext("schedule: update_after_schedule"):
             self._update_after_schedule(scheduler_output)
+        # todo 返回本地调度的结果
         return scheduler_output
 
     def _preempt_request(self, request: Request, timestamp: float) -> None:

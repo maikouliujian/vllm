@@ -305,6 +305,7 @@ class InputBatch:
         self,
         request: "CachedRequestState",
     ) -> int:
+        # todo 会为一个request分配一个index
         req_index = self._register_add_request(request)
 
         req_id = request.req_id
@@ -339,6 +340,7 @@ class InputBatch:
         self.num_tokens_no_spec[req_index] = request.num_tokens
 
         self.num_computed_tokens_cpu[req_index] = request.num_computed_tokens
+        # todo
         self.block_table.add_row(request.block_ids, req_index)
 
         if sampling_params := request.sampling_params:

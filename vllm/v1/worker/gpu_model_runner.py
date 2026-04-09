@@ -541,6 +541,7 @@ class GPUModelRunner(
                 self.effective_drafter_max_model_len = self.max_model_len
 
         # Request states.
+        # todo 每一个请求中都有缓存信息！！！！！！
         self.requests: dict[str, CachedRequestState] = {}
         # NOTE(rob): num_prompt_logprobs only includes reqs
         # that are currently in the prefill phase.
@@ -1165,6 +1166,7 @@ class GPUModelRunner(
         # Add the new or resumed requests to the persistent batch.
         # The smaller empty indices are filled first.
         for request in reqs_to_add:
+            # todo ！！！！！！
             self.input_batch.add_request(request)
             self.input_batch.update_req_spec_token_ids(request, scheduled_spec_tokens)
 
@@ -1627,7 +1629,8 @@ class GPUModelRunner(
                     ].copy_(req_embeds[start_pos:actual_end])
 
                 output_idx += num_sched
-
+        # todo 这个函数将计算出输入的每个token的slot_mapping,
+        # todo 你可以理解为每一个token的kvcache 地址偏移。有了这个地址，我们就可以在2.3节的整块tensor中，找到需要计算的token的kvcache的地址。
         self.input_batch.block_table.compute_slot_mapping(req_indices, positions_np)
         self.input_batch.block_table.commit_slot_mapping(total_num_scheduled_tokens)
 
@@ -3302,7 +3305,7 @@ class GPUModelRunner(
                 pyt_hooks = PytHooks()
                 pyt_hooks.register_hooks(self.model, self.model.__class__.__name__)
                 self.layerwise_nvtx_hooks_registered = True
-
+    # todo 确定当前 Batch 中的每个 Token 应该存放在 KV Cache 物理内存的具体哪个“坑位”（Slot）里
     def _get_slot_mappings(
         self,
         num_tokens_padded: int,
@@ -3356,10 +3359,11 @@ class GPUModelRunner(
             return slot_mapping
 
         slot_mappings_by_gid = {
+            # todo _get_slot_mapping
             gid: _get_slot_mapping(gid)
             for gid, _ in enumerate(self.kv_cache_config.kv_cache_groups)
         }
-
+        # todo 每一层对应一个slot_mapping！！！！！！
         slot_mappings_by_layer: dict[str, torch.Tensor] = {}
         for gid, kv_cache_group in enumerate(self.kv_cache_config.kv_cache_groups):
             slot_mapping = slot_mappings_by_gid[gid]
@@ -3376,7 +3380,7 @@ class GPUModelRunner(
             return slot_mappings_by_gid, result
 
         return slot_mappings_by_gid, slot_mappings_by_layer
-
+    # todo 执行推理
     @torch.inference_mode()
     def execute_model(
         self,
@@ -3407,6 +3411,7 @@ class GPUModelRunner(
             self.synchronize_input_prep(),
         ):
             # Update persistent batch states.
+            # todo 里面包含了token ids和block ids等信息
             self._update_states(scheduler_output)
 
             if has_ec_transfer() and get_ec_transfer().is_producer:
@@ -3448,7 +3453,7 @@ class GPUModelRunner(
             num_scheduled_tokens_np = np.array(tokens, dtype=np.int32)
             max_num_scheduled_tokens = int(num_scheduled_tokens_np.max())
             num_tokens_unpadded = scheduler_output.total_num_scheduled_tokens
-
+            # todo 预处理请求！！！！！！
             logits_indices, spec_decode_metadata = self._prepare_inputs(
                 scheduler_output,
                 num_scheduled_tokens_np,
@@ -3534,7 +3539,7 @@ class GPUModelRunner(
 
             use_spec_decode = len(scheduler_output.scheduled_spec_decode_tokens) > 0
             ubatch_slices_attn = ubatch_slices_padded if pad_attn else ubatch_slices
-
+            # todo slot_mappings
             slot_mappings_by_group, slot_mappings = self._get_slot_mappings(
                 num_tokens_padded=num_tokens_padded
                 if pad_attn or has_separate_kv_update
@@ -4323,6 +4328,7 @@ class GPUModelRunner(
 
                     self.model.set_aux_hidden_state_layers(aux_layers)
                 time_after_load = time.perf_counter()
+            # todo 模型加载消耗的内存
             self.model_memory_usage = m.consumed_memory
         except torch.cuda.OutOfMemoryError as e:
             msg = (
@@ -5279,6 +5285,7 @@ class GPUModelRunner(
                             self.encoder_cache[f"tmp_{i}"] = output
 
         # Add `is_profile` here to pre-allocate communication buffers
+        # todo dummy run
         hidden_states, last_hidden_states = self._dummy_run(
             self.max_num_tokens, is_profile=True
         )
@@ -5804,11 +5811,13 @@ class GPUModelRunner(
             corresponding memory buffer for KV cache.
         """
         kv_cache_raw_tensors: dict[str, torch.Tensor] = {}
+        # todo 多个层物理复用同一个 Tensor
         for kv_cache_tensor in kv_cache_config.kv_cache_tensors:
             tensor = torch.zeros(
                 kv_cache_tensor.size, dtype=torch.int8, device=self.device
             )
             for layer_name in kv_cache_tensor.shared_by:
+                # todo 多个层物理复用同一个 Tensor
                 kv_cache_raw_tensors[layer_name] = tensor
 
         layer_names = set()
@@ -5966,19 +5975,21 @@ class GPUModelRunner(
         self, kv_cache_config: KVCacheConfig, kernel_block_sizes: list[int]
     ) -> dict[str, torch.Tensor]:
         """
-        Initialize the memory buffer for KV cache.
+    初始化KV缓存的内存缓冲区。
 
-        Args:
-            kv_cache_config: The KV cache config
-            kernel_block_sizes: The kernel block sizes for each KV cache group.
+    Args:
+        kv_cache_config: KV缓存配置
+        kernel_block_sizes: 每个KV缓存组的内核块大小
 
-        Returns:
-            Dict[str, torch.Tensor]: A map between layer names to their
-            corresponding memory buffer for KV cache.
-        """
+    Returns:
+        Dict[str, torch.Tensor]: 层名称到对应KV缓存内存缓冲区的映射
+    """
 
         # Try creating KV caches optimized for kv-connector transfers
         cache_dtype = self.cache_config.cache_dtype
+        # todo 如果模型的所有注意力层（Attn Groups）结构一致，且数据类型支持，会进入这个分支。
+        # todo 这是为了 kv-connector 传输优化的。它会调用 allocate_uniform_kv_caches。
+        #  这种方式通常会分配一块连续的内存，有利于在多卡之间或跨节点进行 KV Cache 的快速迁移。
         if self.use_uniform_kv_cache(self.attn_groups, cache_dtype):
             kv_caches, cross_layers_kv_cache, attn_backend = (
                 self.allocate_uniform_kv_caches(
@@ -5994,6 +6005,7 @@ class GPUModelRunner(
         else:
             # Fallback to the general case
             # Initialize the memory buffer for KV cache
+            # todo
             kv_cache_raw_tensors = self._allocate_kv_cache_tensors(kv_cache_config)
 
             # Change the memory buffer to the desired shape
@@ -6009,6 +6021,7 @@ class GPUModelRunner(
         num_attn_module = (
             2 if self.model_config.hf_config.model_type == "longcat_flash" else 1
         )
+        # todo bind_kv_cache 的作用是将刚刚申请好的物理显存张量“绑定”到模型实例的属性或静态前向上下文中。
         bind_kv_cache(
             kv_caches,
             self.compilation_config.static_forward_context,
@@ -6072,6 +6085,7 @@ class GPUModelRunner(
 
         # Reinitialize need to after initialize_attn_backend
         self.may_reinitialize_input_batch(kv_cache_config, kernel_block_sizes)
+        # todo 初始化kvcache
         kv_caches = self.initialize_kv_cache_tensors(
             kv_cache_config, kernel_block_sizes
         )

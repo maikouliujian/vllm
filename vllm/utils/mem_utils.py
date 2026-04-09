@@ -97,6 +97,8 @@ class MemorySnapshot:
         # After `torch.cuda.reset_peak_memory_stats()`,
         # `torch.cuda.memory_reserved()` will keep growing, and only shrink
         # when we call `torch.cuda.empty_cache()` or OOM happens.
+        # todo allocated_bytes.all.peak：这是 PyTorch 内部统计的一个特定指标，记录了算子执行过程中“最极限”的那一刻占用了多少字节。
+        # todo allocated_bytes.all.peak 是 PyTorch Caching Allocator（缓存分配器） 内部维护的一个计数器。
         self.torch_peak = current_platform.memory_stats(device).get(
             "allocated_bytes.all.peak", 0
         )
@@ -192,7 +194,11 @@ class MemoryProfilingResult:
             f"weights memory: {format_gib(self.weights_memory)}GiB."
         )
 
-
+"""
+在 contextmanager 模式下，代码被 yield 分成了两半：
+yield 之前的内容：对应 __enter__。在你调用 with memory_profiling(...) as result 时执行。
+yield 之后的内容：对应 __exit__。在 with 缩进块里的代码（即 profile_run()）执行完毕后执行。
+"""
 @contextlib.contextmanager
 def memory_profiling(
     baseline_snapshot: MemorySnapshot,
@@ -276,6 +282,9 @@ def memory_profiling(
 
     non_torch_memory = result.non_torch_increase
     peak_activation_memory = result.torch_peak_increase
+    # todo result.weights_memory：模型权重
+    # todo peak_activation_memory：峰值激活值：受到max_num_seqs和max_model_len影响
+    # todo non_torch_memory：非Torch 占用
     result.non_kv_cache_memory = (
         non_torch_memory + peak_activation_memory + result.weights_memory
     )

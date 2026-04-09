@@ -130,9 +130,17 @@ class BlockTable:
         self.num_blocks_per_row[src_tgt] = self.num_blocks_per_row[tgt_src]
         self.block_table.np[src_tgt] = self.block_table.np[tgt_src]
 
+    # todo req_indices是请求中每个token的归属的request，例如[0,0,0,1,1,1,1,2,2,2,2,2],
+    #  这里就是三个token是第一个request的，中间四个token是第二个request的。
+    # todo positions就是每一个token在他自己的request中的位置，对应上面的例子就是：[0,1,2, 0,1,2,3, 0,1,2,3,4]。
     def compute_slot_mapping(
         self, req_indices: np.ndarray, positions: np.ndarray
     ) -> None:
+        """
+            计算并填充 slot_mapping。
+            req_indices: 当前 Batch 中每个 token 所属的请求索引 (row_idx)
+            positions: 每个 token 在各自序列中的全局位置索引
+            """
         # E.g., [0, 1, 0, 1, 2, 3, 4, 0, 1, 2]
         # -> [0, 0, K, K, K + 1, K + 1, K + 2, 2 * K, 2 * K, 2 * K + 1]
         # where K is the max_num_blocks_per_req and the block size is 2.
@@ -149,11 +157,12 @@ class BlockTable:
             # Use a "virtual block" which equals to world_size * block_size
             # for block_table_indices calculation.
             virtual_block_size = self.block_size * total_cp_world_size
+            # todo 取blockid的下标
             block_table_indices = (
                 req_indices * self.max_num_blocks_per_req
                 + positions // virtual_block_size
             )
-
+            # todo # 2. 从 block_table 物理表里取出对应的物理块编号 (block_numbers)
             block_numbers = self.block_table.np.ravel()[block_table_indices]
             # Use virtual_block_size for mask calculation, which marks local
             # tokens.
@@ -183,6 +192,7 @@ class BlockTable:
             )
 
             block_numbers = self.block_table.np.ravel()[block_table_indices]
+            # todo block的offset
             block_offsets = positions % self.block_size
             np.add(
                 block_numbers * self.block_size,
@@ -286,7 +296,7 @@ class MultiGroupBlockTable:
                 f"max_num_blocks length ({len(max_num_blocks)}) "
                 f"must match block_sizes length ({len(block_sizes)})"
             )
-
+        ## todo
         self.block_tables = [
             BlockTable(
                 block_size,
@@ -306,7 +316,7 @@ class MultiGroupBlockTable:
     def append_row(self, block_ids: tuple[list[int], ...], row_idx: int) -> None:
         for i, block_table in enumerate(self.block_tables):
             block_table.append_row(block_ids[i], row_idx)
-
+    # todo 添加一行
     def add_row(self, block_ids: tuple[list[int], ...], row_idx: int) -> None:
         for i, block_table in enumerate(self.block_tables):
             block_table.add_row(block_ids[i], row_idx)

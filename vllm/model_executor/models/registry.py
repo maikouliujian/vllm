@@ -476,6 +476,7 @@ _MULTIMODAL_MODELS = {
         "qwen2_5_omni_thinker",
         "Qwen2_5OmniThinkerForConditionalGeneration",
     ),
+     Qwen3OmniMoeForConditionalGeneration
     "Qwen3OmniMoeForConditionalGeneration": (
         "qwen3_omni_moe_thinker",
         "Qwen3OmniMoeThinkerForConditionalGeneration",

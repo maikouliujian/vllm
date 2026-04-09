@@ -118,6 +118,7 @@ class MultiModalConfig:
 
     For example, for Phi-3-Vision:
     `{"num_crops": 4}`."""
+    # todo
     mm_processor_cache_gb: float = Field(default=4, ge=0)
     """The size (in GiB) of the multi-modal processor cache, which is used to
     avoid re-processing past multi-modal inputs.

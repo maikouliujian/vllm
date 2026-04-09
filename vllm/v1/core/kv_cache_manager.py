@@ -90,7 +90,7 @@ class KVCacheBlocks:
         """
         return KVCacheBlocks(tuple(() for _ in range(len(self.blocks))))
 
-
+# TODO KVCacheManager!!!!!!
 class KVCacheManager:
     def __init__(
         self,
@@ -202,7 +202,7 @@ class KVCacheManager:
             )
 
         return self.create_kv_cache_blocks(computed_blocks), num_new_computed_tokens
-
+    # todo 申请kvcache slot
     def allocate_slots(
         self,
         request: Request,
@@ -322,7 +322,7 @@ class KVCacheManager:
         self.coordinator.remove_skipped_blocks(
             request.request_id, total_computed_tokens
         )
-
+        # todo 计算需要申请block的数量
         num_blocks_to_allocate = self.coordinator.get_num_blocks_to_allocate(
             request_id=request.request_id,
             num_tokens=num_tokens_need_slot,
@@ -332,7 +332,7 @@ class KVCacheManager:
             + num_external_computed_tokens,
             num_tokens_main_model=num_tokens_main_model,
         )
-
+        # todo 如果需要申请的比空余的资源大，那么返回none
         if num_blocks_to_allocate > self.block_pool.get_num_free_blocks():
             # Cannot allocate new blocks
             return None

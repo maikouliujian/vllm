@@ -117,7 +117,7 @@ class EngineCore:
             self._eep_scale_up_before_kv_init()
 
         # Setup KV Caches and update CacheConfig after profiling.
-        # todo 初始化kvcache
+        # todo 初始化kvcache!!!!!!
         num_gpu_blocks, num_cpu_blocks, kv_cache_config = self._initialize_kv_caches(
             vllm_config
         )
@@ -250,7 +250,7 @@ class EngineCore:
             else:
                 # Profiles the peak memory usage of the model to determine how
                 # much memory can be allocated for kv cache.
-                # todo
+                # todo 计算kvcache可分配大小
                 available_gpu_memory = self.model_executor.determine_available_memory()
                 self.available_gpu_memory_for_kv_cache = available_gpu_memory[0]
         else:
@@ -261,7 +261,7 @@ class EngineCore:
 
         # Track max_model_len before KV cache config to detect auto-fit changes
         max_model_len_before = vllm_config.model_config.max_model_len
-
+        # todo 获取kv cache config，会计算block数量
         kv_cache_configs = get_kv_cache_configs(
             vllm_config, kv_cache_specs, available_gpu_memory
         )
@@ -377,7 +377,7 @@ class EngineCore:
             )
         )
         self._iteration_index += 1
-
+    # todo 一次step触发一次schedule
     def step(self) -> tuple[dict[int, EngineCoreOutputs], bool]:
         """Schedule, execute, and make output.
 
@@ -389,7 +389,9 @@ class EngineCore:
         # or finished and not yet removed from the batch.
         if not self.scheduler.has_requests():
             return {}, False
+        # todo 调度
         scheduler_output = self.scheduler.schedule()
+        # todo 推理
         future = self.model_executor.execute_model(scheduler_output, non_block=True)
         grammar_output = self.scheduler.get_grammar_bitmask(scheduler_output)
         with (
@@ -1610,7 +1612,7 @@ class DPEngineCoreProc(EngineCoreProc):
                 *counts, step_counter=self.step_counter, current_wave=self.current_wave
             )
             self.output_queue.put_nowait((-1, EngineCoreOutputs(scheduler_stats=stats)))
-
+    # todo 入口！！！！！！
     def run_busy_loop(self):
         """Core busy loop of the EngineCore for data parallel case."""
 
@@ -1624,7 +1626,7 @@ class DPEngineCoreProc(EngineCoreProc):
                 if self.eep_scaling_state.is_complete():
                     self.process_input_queue_block = True
                     self.eep_scaling_state = None
-
+            # todo 推理
             executed = self._process_engine_step()
             self._maybe_publish_request_counts()
 

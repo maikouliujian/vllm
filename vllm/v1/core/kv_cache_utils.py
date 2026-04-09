@@ -276,7 +276,7 @@ class FreeKVCacheBlockQueue:
             self.fake_free_list_head.next_free_block = curr_block
             curr_block.prev_free_block = self.fake_free_list_head
         return ret
-
+    # todo 核心优势，任意位置删除！！！！！！
     def remove(self, block: KVCacheBlock) -> None:
         """Remove a block in the free list and reduce num_free_blocks by 1.
 
@@ -558,7 +558,7 @@ def hash_block_tokens(
         hash_function((parent_block_hash, curr_block_token_ids_tuple, extra_keys))
     )
 
-
+# todo 计算请求的block hash
 def get_request_block_hasher(
     block_size: int,
     caching_hash_fn: Callable[[Any], bytes],
@@ -566,7 +566,8 @@ def get_request_block_hasher(
     """
     Returns a function which computes the list of un-computed block hashes
     of a request."""
-
+    # todo 这段代码是 vLLM 中实现 Prefix Caching（前缀缓存） 的核心逻辑。它的主要任务是：
+    #  将请求中的 Token 序列按固定大小（Block Size）切分成块，并为每一个块计算一个唯一的哈希值（Hash）。
     def request_block_hasher(request: Request) -> list[BlockHash]:
         start_token_idx = len(request.block_hashes) * block_size
         num_tokens = request.num_tokens
@@ -582,7 +583,7 @@ def get_request_block_hasher(
             # completed with generated tokens, we only need to consider the
             # last mm input.
             curr_mm_idx = -1
-
+        # todo request.block_hashes：当前request中已经计算完成并生效的、各个数据块（Block）的哈希值
         prev_block_hash_value = (
             request.block_hashes[-1] if request.block_hashes else None
         )
@@ -832,7 +833,7 @@ def may_override_num_blocks(vllm_config: VllmConfig, num_blocks: int) -> int:
 
     return num_blocks
 
-
+# todo 获取每一个group中block的数量
 def get_num_blocks(
     vllm_config: VllmConfig, num_layers: int, available_memory: int, page_size: int
 ) -> int:
@@ -1132,6 +1133,7 @@ def get_kv_cache_config_from_groups(
             [group.kv_cache_spec for group in kv_cache_groups]
         )
         assert group_size > 0, "group_size must be greater than 0"
+        # todo 获取每一个group的block数量
         num_blocks = get_num_blocks(
             vllm_config, group_size, available_memory, page_size
         )
@@ -1141,6 +1143,17 @@ def get_kv_cache_config_from_groups(
             for j in range(len(kv_cache_groups)):
                 if i < len(kv_cache_groups[j].layer_names):
                     shared_by.append(kv_cache_groups[j].layer_names[i])
+            # todo 一个kv_cache_tensors会被多个层共享！！！！！！！
+            # todo 如：
+            # # 配置
+            # num_blocks = 1000  # tensor blocks
+            # shared_layers = [layer_0, layer_3, layer_6]  # L=3
+            #
+            # # 假设当前状态
+            # layer_0 使用: 300 blocks (处理 300 tokens)
+            # layer_3 使用: 300 blocks (处理 300 tokens)
+            # layer_6 使用: 300 blocks (处理 300 tokens)
+            # todo 总计: 900 blocks <= 1000
             kv_cache_tensors.append(
                 KVCacheTensor(size=page_size * num_blocks, shared_by=shared_by)
             )
@@ -1550,6 +1563,7 @@ def get_kv_cache_configs(
     # Get global KV cache groups. This also handles spec unification for
     # hybrid models when disable_hybrid_kv_cache_manager is enabled.
     # After this call, merged_kv_cache_specs may be modified in-place.
+    # todo 获取kvcache group
     global_kv_cache_groups = get_kv_cache_groups(vllm_config, merged_kv_cache_specs)
 
     # If original_max_model_len was -1, automatically
@@ -1584,6 +1598,7 @@ def get_kv_cache_configs(
             kv_cache_spec_one_worker
         ), "Some layers are not assigned to any group."
         kv_cache_configs.append(
+            # todo
             get_kv_cache_config_from_groups(
                 vllm_config, projected_groups, available_memory_one_worker
             )

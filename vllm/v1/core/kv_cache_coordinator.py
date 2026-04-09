@@ -252,7 +252,7 @@ class KVCacheCoordinator(ABC):
         for manager in self.single_type_managers:
             manager.new_step_starts()
 
-
+### todo 默认
 class KVCacheCoordinatorNoPrefixCache(KVCacheCoordinator):
     """
     KV cache coordinator to use if prefix caching is disabled or unsupported.
@@ -543,7 +543,7 @@ class HybridKVCacheCoordinator(KVCacheCoordinator):
             blocks if blocks is not None else [] for blocks in hit_blocks_by_group
         ), hit_length
 
-
+# todo 获取kv cache 协调者
 def get_kv_cache_coordinator(
     kv_cache_config: KVCacheConfig,
     max_model_len: int,

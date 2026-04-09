@@ -75,7 +75,7 @@ class AttentionSpec(KVCacheSpec):
             assert self.page_size_padded >= real_page_size
             return self.page_size_padded
         return real_page_size
-
+    # todo page size
     @property
     def real_page_size_bytes(self) -> int:
         return (
@@ -470,17 +470,43 @@ class KVCacheGroupSpec:
     # The KV cache spec of this manager layer
     kv_cache_spec: KVCacheSpec
 
-
+"""
+KVCacheConfig
+│
+├── num_blocks = 100
+│   └── 含义：每个 KVCacheTensor 有 100 个 block
+│
+├── kv_cache_tensors (物理内存)
+│   ├── Tensor 0: 
+│   │   ├── size: 16KB × 100 = 1.6 MB
+│   │   ├── blocks: 100 个
+│   │   └── shared_by: ["layer_0", "layer_2"]
+│   │
+│   └── Tensor 1:
+│       ├── size: 16KB × 100 = 1.6 MB
+│       ├── blocks: 100 个
+│       └── shared_by: ["layer_1", "layer_3"]
+│
+└── kv_cache_groups (逻辑分组)
+    ├── Group 0: ["layer_0", "layer_1"]
+    │   ├── layer_0 → Tensor 0
+    │   └── layer_1 → Tensor 1
+    │
+    └── Group 1: ["layer_2", "layer_3"]
+        ├── layer_2 → Tensor 0
+        └── layer_3 → Tensor 1
+"""
 @dataclass
 class KVCacheConfig:
     """
     The KV cache configuration of a model.
     """
 
-    num_blocks: int
+    num_blocks: int # todo 单个KVCacheTensor中的block数
     """The number of KV cache blocks"""
     kv_cache_tensors: list[KVCacheTensor]
     """How should model runner initialize the KV cache tensors for each layer"""
+    # todo 大多数模型都只有一个kv_cache_groups，除非是混合attn
     kv_cache_groups: list[KVCacheGroupSpec]
     """
     The kv cache groups of the model.

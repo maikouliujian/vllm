@@ -59,6 +59,7 @@ class SingleTypeKVCacheManager(ABC):
         # Mapping from request ID to blocks to track the blocks allocated
         # for each request, so that we can free the blocks when the request
         # is finished.
+        # todo 追踪每一个请求对应的block
         self.req_to_blocks: defaultdict[str, list[KVCacheBlock]] = defaultdict(list)
 
         # {req_id: The number of cached blocks for this given request}
@@ -73,7 +74,7 @@ class SingleTypeKVCacheManager(ABC):
     @classmethod
     def _get_num_evictable_blocks(cls, blocks: Sequence[KVCacheBlock]):
         return sum(blk.ref_cnt == 0 and not blk.is_null for blk in blocks)
-
+    # todo 申请kvcache block
     def get_num_blocks_to_allocate(
         self,
         request_id: str,
@@ -100,8 +101,9 @@ class SingleTypeKVCacheManager(ABC):
         Returns:
             The number of blocks to allocate.
         """
-
+        # todo 需要的block数
         num_required_blocks = cdiv(num_tokens, self.block_size)
+        # todo 当前请求已经占用的block数
         num_req_blocks = len(self.req_to_blocks.get(request_id, ()))
 
         if request_id in self.num_cached_block:
@@ -1094,14 +1096,17 @@ class SinkFullAttentionManager(FullAttentionManager):
         num_sink_block = sink_len // self.block_size
         self.sink_blocks = self.block_pool.free_block_queue.popleft_n(num_sink_block)
 
-
+# todo 真正的kvcache manager
+# todo 这个字典定义了不同注意力机制对应的 KV Cache 管理器
 spec_manager_map: dict[type[KVCacheSpec], type[SingleTypeKVCacheManager]] = {
+    # todo 常见
     FullAttentionSpec: FullAttentionManager,
     MLAAttentionSpec: FullAttentionManager,
     SlidingWindowSpec: SlidingWindowManager,
     ChunkedLocalAttentionSpec: ChunkedLocalAttentionManager,
     MambaSpec: MambaManager,
     CrossAttentionSpec: CrossAttentionManager,
+    # todo 带 sink token 的全注意力
     SinkFullAttentionSpec: SinkFullAttentionManager,
 }
 

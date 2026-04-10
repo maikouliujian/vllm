@@ -658,7 +658,7 @@ class Worker(WorkerBase):
         self, grammar_output: "GrammarOutput | None"
     ) -> ModelRunnerOutput | AsyncModelRunnerOutput:
         return self.model_runner.sample_tokens(grammar_output)
-
+    # todo 执行模型推理！！！！！！！
     @torch.inference_mode()
     def execute_model(
         self, scheduler_output: "SchedulerOutput"
@@ -720,6 +720,8 @@ class Worker(WorkerBase):
             )
 
         with self.annotate_profile(scheduler_output):
+            # todo 执行模型推理！！！！！！
+            # todo 调用到model_runner.py的execute_model
             output = self.model_runner.execute_model(
                 scheduler_output, intermediate_tensors
             )

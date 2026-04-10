@@ -834,7 +834,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         np.minimum(
             computed_prefill, self.req_states.prefill_len.np, out=computed_prefill
         )
-
+    # todo 真正执行推理！！！！！！
     @torch.inference_mode()
     def execute_model(
         self,

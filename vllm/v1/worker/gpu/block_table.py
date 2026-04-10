@@ -83,7 +83,12 @@ class BlockTables:
         return torch.tensor(
             [t.data_ptr() for t in x], dtype=torch.uint64, device=self.device
         )
-
+    """
+    假设我们有一个模型，它的块大小 block_size = 16（每 16 个 Token 占用一个物理块）。
+    1. 初始状态（Prefill 阶段）你向 AI 提了一个问题，输入了 35 个 Token。逻辑计算：$35 / 16 = 2$ 余 $3$。所以系统必须分配 3 个块 来装这些 Token。物理分配：调度器从显存池里拿到了三个空闲块 ID，比如是 [10, 11, 12]。账本记录：block_tables[0][req_index] 的内容变为 [10, 11, 12, 0, 0, ...]。num_blocks.np[0, req_index] 的值被设为 3。
+    2. 开始 Decode（第 1 到 13 个 Token）模型开始吐字。每吐一个字，就要占掉一个槽位。当前状况：第 3 个块（ID 为 12）之前只用了 3 个位置，还剩 $16 - 3 = 13$ 个空位。运行过程：模型连续吐了 13 个字。账本变化：虽然这 13 个字写进了物理块 12，但请求持有的物理块总数没有增加。变量状态：num_blocks.np[0, req_index] 依然是 3。
+    3. 关键时刻：第 14 个 Token（跨块）模型吐出第 14 个字（这是生成的第 14 个，加上初始的 35 个，总共是第 49 个 Token）。逻辑检查：之前的 3 个块已经完全填满了（$3 \times 16 = 48$）。第 49 个 Token 没地方住了！调度动作：allocate_new_blocks 被触发，从池子里又拿了一个新块，ID 为 99。代码执行：start = self.num_blocks.np[0, req_index] -> 得到 3。stage_write(req_index, 3, [99]) -> 把 99 填进 block_tables 的索引 3（也就是第 4 个位置）。num_blocks.np[0, req_index] = 3 + 1 -> 更新为 4。
+    """
     def append_block_ids(
         self,
         req_index: int,
@@ -91,6 +96,7 @@ class BlockTables:
         overwrite: bool,
     ) -> None:
         for i in range(self.num_kv_cache_groups):
+            # todo num_blocks.np[i, req_index] ===> 第i行，第req_index列，每一个请求对一个index，维护其请求状态
             start = self.num_blocks.np[i, req_index] if not overwrite else 0
             block_ids = new_block_ids[i]
             self.block_tables[i].stage_write(req_index, start, block_ids)

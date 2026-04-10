@@ -22,8 +22,9 @@ class RequestState:
         self.num_speculative_steps = num_speculative_steps
         self.vocab_size = vocab_size
         self.device = device
-
+        # todo 请求id->index
         self.req_id_to_index: dict[str, int] = {}
+        # todo 请求index->id
         self.index_to_req_id: dict[int, str] = {}
         self.free_indices = list(range(max_num_reqs))
 

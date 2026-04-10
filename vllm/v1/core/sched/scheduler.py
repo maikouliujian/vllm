@@ -322,6 +322,7 @@ class Scheduler(SchedulerInterface):
                 pass
         return num_new_tokens
     # todo 一次调度！！！！！！
+    # todo 1 Token = 1 Slot = (1 Key Location + 1 Value Location)
     def schedule(self) -> SchedulerOutput:
         # NOTE(woosuk) on the scheduling algorithm:
         # There's no "decoding phase" nor "prefill phase" in the scheduler.
@@ -333,6 +334,7 @@ class Scheduler(SchedulerInterface):
         # num_tokens_with_spec. This is general enough to cover
         # chunked prefills, prefix caching, speculative decoding,
         # and the "jump decoding" optimization in the future.
+        # todo 以下参数只是针对本地调度使用的！！！！！！
 
         # todo # NOTE(woosuk): 关于调度算法的笔记：
         #     # 调度器中没有显式的“预填充阶段”或“解码阶段”。
@@ -340,7 +342,7 @@ class Scheduler(SchedulerInterface):
         #     # 在每一步，调度器尝试为请求分配 Token，使已计算数追上总数。
         #     # 这种设计通用于分块预填充、前缀缓存、投机采样及未来的跳跃解码优化。
         #     # 初始化四个请求队列：新请求、恢复的请求、运行中的请求、被抢占的请求
-
+        # todo 新的请求
         scheduled_new_reqs: list[Request] = []
         # todo 重新被调度的请求
         scheduled_resumed_reqs: list[Request] = []
@@ -395,7 +397,7 @@ class Scheduler(SchedulerInterface):
                 req_index += 1
                 continue
             # todo 计算该请求还需要计算多少个 Token 才能“追上”目标进度
-            # todo 本次任务量 = ( 基础目标 + 额外预留 ) - 实际已完成量
+            # todo 本次任务量 = ( 基础目标 + 额外预留 ) - 实际已完成量，如果是decode阶段，就是1
             num_new_tokens = (
                 request.num_tokens_with_spec
                 + request.num_output_placeholders
@@ -460,6 +462,8 @@ class Scheduler(SchedulerInterface):
             with record_function_or_nullcontext("schedule: allocate_slots"):
                 while True:
                     # todo 轮训去申请block
+                    # todo 如果当前 Block 还有剩余槽位：它返回的是当前已经分配给该请求的最后一个 Block 的 ID，并更新该 Block 内部的偏移量（offset）。
+                    # todo 如果当前 Block 已满：它会从 BlockManager 的空闲池中申请一个全新的物理块，并返回这个新块的 ID。
                     new_blocks = self.kv_cache_manager.allocate_slots(
                         request,
                         num_new_tokens,
@@ -819,6 +823,7 @@ class Scheduler(SchedulerInterface):
                         EngineCoreEventType.SCHEDULED, scheduled_timestamp
                     )
                 if request.status == RequestStatus.WAITING:
+                    # todo 新请求！！！！！！
                     scheduled_new_reqs.append(request)
                 elif request.status == RequestStatus.PREEMPTED:
                     scheduled_resumed_reqs.append(request)
@@ -895,6 +900,7 @@ class Scheduler(SchedulerInterface):
                 for req in scheduled_new_reqs
             ]
         else:
+            # todo 新请求数据！！！！！！
             new_reqs_data = [
                 NewRequestData.from_request(
                     req, req_to_new_blocks[req.request_id].get_block_ids()
@@ -903,6 +909,7 @@ class Scheduler(SchedulerInterface):
             ]
 
         with record_function_or_nullcontext("schedule: make_cached_request_data"):
+            # todo scheduled_running_reqs：要被调度的请求！！！！！！
             cached_reqs_data = self._make_cached_request_data(
                 scheduled_running_reqs,
                 scheduled_resumed_reqs,
@@ -916,8 +923,8 @@ class Scheduler(SchedulerInterface):
         self.prev_step_scheduled_req_ids.update(num_scheduled_tokens.keys())
 
         scheduler_output = SchedulerOutput(
-            scheduled_new_reqs=new_reqs_data,
-            scheduled_cached_reqs=cached_reqs_data,
+            scheduled_new_reqs=new_reqs_data, # todo prefill
+            scheduled_cached_reqs=cached_reqs_data, # todo decode
             num_scheduled_tokens=num_scheduled_tokens,
             total_num_scheduled_tokens=total_num_scheduled_tokens,
             scheduled_spec_decode_tokens=scheduled_spec_decode_tokens,

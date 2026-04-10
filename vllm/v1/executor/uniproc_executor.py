@@ -98,6 +98,7 @@ class UniProcExecutor(Executor):
     def execute_model(  # type: ignore[override]
         self, scheduler_output: SchedulerOutput, non_block: bool = False
     ) -> ModelRunnerOutput | None | Future[ModelRunnerOutput | None]:
+        # todo 调用到gpu_worker.py的execute_model
         return self.collective_rpc(
             "execute_model",
             args=(scheduler_output,),

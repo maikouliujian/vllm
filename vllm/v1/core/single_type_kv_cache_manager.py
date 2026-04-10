@@ -59,7 +59,7 @@ class SingleTypeKVCacheManager(ABC):
         # Mapping from request ID to blocks to track the blocks allocated
         # for each request, so that we can free the blocks when the request
         # is finished.
-        # todo 追踪每一个请求对应的block
+        # todo 追踪每一个请求对应的block list
         self.req_to_blocks: defaultdict[str, list[KVCacheBlock]] = defaultdict(list)
 
         # {req_id: The number of cached blocks for this given request}
@@ -210,7 +210,7 @@ class SingleTypeKVCacheManager(ABC):
                 cdiv(num_total_computed_tokens, self.block_size) - len(req_blocks)
             )
             req_blocks.extend(allocated_blocks)
-
+    # todo 申请block
     def allocate_new_blocks(
         self, request_id: str, num_tokens: int, num_tokens_main_model: int
     ) -> list[KVCacheBlock]:
@@ -231,6 +231,7 @@ class SingleTypeKVCacheManager(ABC):
         req_blocks = self.req_to_blocks[request_id]
         num_required_blocks = cdiv(num_tokens, self.block_size)
         num_new_blocks = num_required_blocks - len(req_blocks)
+        # todo 够用的情况
         if num_new_blocks <= 0:
             return []
         else:
